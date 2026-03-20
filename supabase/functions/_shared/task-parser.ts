@@ -122,7 +122,7 @@ Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-5",
+      model: "google/gemini-3.1-pro-preview",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: taskPrompt },
