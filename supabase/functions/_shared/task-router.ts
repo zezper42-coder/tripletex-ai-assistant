@@ -53,8 +53,17 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   creditNote_create: executeCreditNoteCreate,
 };
 
+// Normalize camelCase resource types to snake_case for executor lookup
+const RESOURCE_ALIASES: Record<string, string> = {
+  travelExpense: "travel_expense",
+  creditNote: "creditNote", // already matches
+  travelexpense: "travel_expense",
+  creditnote: "creditNote",
+};
+
 export function resolveTaskType(intent: string, resourceType: string): TaskType {
-  const key = `${resourceType}_${intent}`;
+  const normalizedResource = RESOURCE_ALIASES[resourceType] ?? resourceType;
+  const key = `${normalizedResource}_${intent}`;
   if (key in EXECUTOR_MAP) return key as TaskType;
   return "unknown";
 }

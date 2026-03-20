@@ -36,15 +36,15 @@ export async function executeCustomerCreate(
     return failedResult(errors, log);
   }
 
-  const body = {
+  const body: Record<string, unknown> = {
     name: normalizedFields.name,
     isCustomer: true,
     isSupplier: false,
-    ...(normalizedFields.email && { email: normalizedFields.email }),
-    ...(normalizedFields.phoneNumber && { phoneNumber: normalizedFields.phoneNumber }),
-    ...(normalizedFields.organizationNumber && { organizationNumber: normalizedFields.organizationNumber }),
-    ...(normalizedFields.invoiceEmail && { invoiceEmail: normalizedFields.invoiceEmail }),
   };
+  if (normalizedFields.email) body.email = normalizedFields.email;
+  if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
+  if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
+  if (normalizedFields.invoiceEmail) body.invoiceEmail = normalizedFields.invoiceEmail;
 
   const plan: ExecutionPlan = {
     summary: `Create customer: ${normalizedFields.name}`,

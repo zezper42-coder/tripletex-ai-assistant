@@ -56,10 +56,10 @@ export async function executeEmployeeCreate(
   const body: Record<string, unknown> = {
     firstName: normalizedFields.firstName,
     lastName: normalizedFields.lastName,
-    ...(normalizedFields.email && { email: normalizedFields.email }),
-    ...(normalizedFields.phoneNumberMobile && { phoneNumberMobile: normalizedFields.phoneNumberMobile }),
-    ...(normalizedFields.dateOfBirth && { dateOfBirth: normalizedFields.dateOfBirth }),
   };
+  if (normalizedFields.email) body.email = normalizedFields.email;
+  if (normalizedFields.phoneNumberMobile) body.phoneNumberMobile = normalizedFields.phoneNumberMobile;
+  if (normalizedFields.dateOfBirth) body.dateOfBirth = normalizedFields.dateOfBirth;
 
   const plan: ExecutionPlan = {
     summary: `Create employee: ${firstName} ${lastName}`,
