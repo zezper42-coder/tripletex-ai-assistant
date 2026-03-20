@@ -43,11 +43,10 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   product_create: executeProductCreate,
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
+  travel_expense_create: executeTravelExpenseCreate,
   invoice_create: executeInvoiceCreate,
   payment_create: executePaymentCreate,
   department_create: executeDepartmentCreate,
-  // TODO: travel_expense_create
-  // TODO: travel_expense_create
 };
 
 export function resolveTaskType(intent: string, resourceType: string): TaskType {
