@@ -65,6 +65,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   creditNote_create: executeCreditNoteCreate,
   supplier_create: executeSupplierCreate,
   contact_create: executeContactCreate,
+  voucher_create: executeVoucherCreate,
 };
 
 // Normalize camelCase resource types to snake_case for executor lookup
