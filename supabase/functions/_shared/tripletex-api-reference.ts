@@ -379,6 +379,29 @@ NOTE: Use postalAddress (NOT address) for supplier addresses.
 - city: string
 - country: { id } (Country ref, Norway = 161)
 
+## Salary Transaction (POST /salary/transaction)
+- year: integer (REQUIRED)
+- month: integer (REQUIRED, 1-12)
+- payslips: array (REQUIRED) of:
+  - employee: { id } (REQUIRED)
+  - specifications: array of:
+    - salaryType: { id } (look up via GET /salary/type)
+    - count: number
+    - rate: number
+    - amount: number
+
+NOTE: Employee MUST have an active employment record (POST /employee/employment) before creating salary transactions.
+NOTE: Employee MUST have dateOfBirth set before creating employment.
+
+## Employee Entitlements (PUT /employee/{id}/entitlement/:grantEntitlementsByTemplate)
+Query parameters:
+- templateType: string (e.g. "all_administrator")
+Use this to grant admin/administrator role to an employee AFTER setting userType to EXTENDED.
+
+## Company Sales Modules (POST /company/salesmodules)
+- salesModule: { id } (module ID to enable)
+Used to enable features like department accounting, project accounting, etc.
+
 ## Common Patterns
 - All refs use { id: <number> } format, e.g. customer: { id: 123 }
 - GET responses: { value: {...} } for single, { fullResultSize, values: [...] } for lists
