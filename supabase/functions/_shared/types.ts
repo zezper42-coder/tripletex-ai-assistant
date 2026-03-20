@@ -30,6 +30,7 @@ export type Intent =
 export type ResourceType =
   | "employee"
   | "customer"
+  | "supplier"
   | "product"
   | "invoice"
   | "payment"

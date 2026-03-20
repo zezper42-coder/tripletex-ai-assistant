@@ -18,7 +18,7 @@ Respond with ONLY a JSON object (no markdown, no explanation) with these exact f
   "language": "nb"|"nn"|"en"|"es"|"pt"|"de"|"fr"|"unknown",
   "normalizedPrompt": "task translated to English",
   "intent": "create"|"update"|"delete"|"list"|"get"|"link"|"reverse"|"unknown",
-  "resourceType": "employee"|"customer"|"product"|"invoice"|"payment"|"creditNote"|"project"|"travelExpense"|"department"|"order"|"account"|"voucher"|"contact"|"address"|"activity"|"unknown",
+  "resourceType": "employee"|"customer"|"supplier"|"product"|"invoice"|"payment"|"creditNote"|"project"|"travelExpense"|"department"|"order"|"account"|"voucher"|"contact"|"address"|"activity"|"unknown",
   "fields": { ... all extracted data values ... },
   "dependencies": [],
   "confidence": 0.0-1.0,
