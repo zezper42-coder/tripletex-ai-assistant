@@ -72,8 +72,23 @@ export async function executeProductCreate(
 
   log.info("Executing product creation", { body });
   const start = Date.now();
-  const response = await client.post("/v2/product", body);
-  const duration = Date.now() - start;
+  let response = await client.post("/v2/product", body);
+  let duration = Date.now() - start;
+  
+  // If vatType caused a 422, retry without it
+  if (response.status === 422 && body.vatType) {
+    const errData = response.data as Record<string, unknown> | null;
+    const valMsgs = (errData?.validationMessages as Array<Record<string, unknown>> | undefined) ?? [];
+    const isVatError = valMsgs.some((m) => String(m.field ?? "").toLowerCase().includes("vat") || String(m.message ?? "").toLowerCase().includes("mva"));
+    if (isVatError) {
+      log.warn("VAT type rejected, retrying without vatType");
+      delete body.vatType;
+      const start2 = Date.now();
+      response = await client.post("/v2/product", body);
+      duration += Date.now() - start2;
+    }
+  }
+  
   const success = response.status >= 200 && response.status < 300;
 
   const stepResult: StepResult = {
