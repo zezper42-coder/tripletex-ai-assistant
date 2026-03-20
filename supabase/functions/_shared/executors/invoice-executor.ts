@@ -6,6 +6,7 @@ import { ParsedTask, StepResult, ExecutionPlan, ExecutionStep } from "../types.t
 import { ExecutorResult } from "../task-router.ts";
 import { VatTypeLookup } from "../vat-lookup.ts";
 import { tryInvoiceCreation } from "../tripletex-compat.ts";
+import { ensureCompanyBankAccount } from "../company-setup.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
