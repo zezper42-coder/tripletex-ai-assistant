@@ -43,6 +43,24 @@ serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    if (testType === "raw") {
+      // Raw API call passthrough for debugging
+      const endpoint = body.endpoint || "/v2/ledger/vatType?count=10&fields=id,number,name,percentage";
+      const authHeader = "Basic " + btoa(`0:${sessionToken}`);
+      const cleanBase = baseUrl.replace(/\/v2\/?$/, "");
+      const url = `${cleanBase}${endpoint}`;
+      const res = await fetch(url, {
+        headers: { "Authorization": authHeader, "Accept": "application/json" },
+      });
+      const data = await res.text();
+      return new Response(JSON.stringify({
+        test: "raw",
+        status: res.status,
+        url,
+        response: JSON.parse(data),
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     if (testType === "solve") {
       // Call the solve function with real credentials
       const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
