@@ -6,6 +6,7 @@ import { ParsedTask, StepResult, ExecutionPlan, ExecutionStep } from "../types.t
 import { ExecutorResult } from "../task-router.ts";
 import { VatTypeLookup } from "../vat-lookup.ts";
 import { tryInvoiceCreation } from "../tripletex-compat.ts";
+import { ensureCompanyBankAccount } from "../company-setup.ts";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -131,6 +132,9 @@ export async function executeInvoiceCreate(
 ): Promise<ExecutorResult> {
   const log = logger.child("executor:invoice");
   const fields = parsed.fields;
+
+  // Ensure company has bank account (required for invoice creation in fresh accounts)
+  await ensureCompanyBankAccount(client, logger);
 
   // Validate
   const errors = validateInvoiceFields(fields);
