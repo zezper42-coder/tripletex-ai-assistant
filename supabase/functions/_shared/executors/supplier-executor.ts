@@ -1,4 +1,4 @@
-// Supplier creation executor — same pattern as customer with isSupplier=true
+// Supplier creation executor — uses dedicated /v2/supplier endpoint (NOT /v2/customer)
 
 import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
@@ -18,11 +18,12 @@ export async function executeSupplierCreate(
   const email = (fields.email ?? fields.emailAddress ?? fields.epost ?? fields.correo ?? fields.supplierEmail) as string | undefined;
   const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon ?? fields.supplierPhone) as string | undefined;
   const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer ?? fields.orgNr ?? fields.orgnr) as string | undefined;
+  const invoiceEmail = (fields.invoiceEmail ?? fields.fakturaEpost) as string | undefined;
   const address = (fields.address ?? fields.adresse ?? fields.addressLine1 ?? fields.dirección) as string | undefined;
   const postalCode = (fields.postalCode ?? fields.postnummer ?? fields.zipCode) as string | undefined;
   const city = (fields.city ?? fields.poststed ?? fields.by ?? fields.ciudad) as string | undefined;
   const country = (fields.country ?? fields.land ?? fields.país ?? fields.Land ?? fields.pays) as string | undefined;
-  const url = (fields.url ?? fields.website ?? fields.nettside) as string | undefined;
+  const website = (fields.url ?? fields.website ?? fields.nettside) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -44,30 +45,34 @@ export async function executeSupplierCreate(
 
   const body: Record<string, unknown> = {
     name: normalizedFields.name,
-    isCustomer: false,
-    isSupplier: true,
   };
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
   if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
-  if (url) body.url = url;
+  if (invoiceEmail) body.invoiceEmail = invoiceEmail;
+  if (website) body.website = website;
 
+  // Use postalAddress with country as {id} ref — Norway = 161
   if (address || postalCode || city || country) {
-    body.postalAddress = {
-      ...(address && { addressLine1: address }),
-      ...(postalCode && { postalCode }),
-      ...(city && { city }),
-      ...(country && { country: { name: country } }),
-    };
+    const addressObj: Record<string, unknown> = {};
+    if (address) addressObj.addressLine1 = address;
+    if (postalCode) addressObj.postalCode = postalCode;
+    if (city) addressObj.city = city;
+    if (country) {
+      const countryLower = String(country).toLowerCase();
+      const isNorway = ["norge", "norway", "no", "nor"].includes(countryLower);
+      addressObj.country = { id: isNorway ? 161 : 0 };
+    }
+    body.postalAddress = addressObj;
   }
 
   const plan: ExecutionPlan = {
     summary: `Create supplier: ${normalizedFields.name}`,
     steps: [{
       stepNumber: 1,
-      description: `POST /v2/customer — create supplier "${normalizedFields.name}"`,
+      description: `POST /v2/supplier — create "${normalizedFields.name}"`,
       method: "POST",
-      endpoint: "/v2/customer",
+      endpoint: "/v2/supplier",
       body,
       resultKey: "supplierId",
     }],
@@ -75,7 +80,7 @@ export async function executeSupplierCreate(
 
   log.info("Executing supplier creation", { body });
   const start = Date.now();
-  const response = await client.postWithRetry("/v2/customer", body);
+  const response = await client.postWithRetry("/v2/supplier", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 
