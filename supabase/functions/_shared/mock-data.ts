@@ -156,3 +156,32 @@ function buildMockTravelExpenseDelete(): PipelineResult {
     verificationPassed: true, logs: [], duration: 160,
   };
 }
+
+function buildMockInvoice(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create invoice for Acme Corp",
+    intent: "create", resourceType: "invoice",
+    fields: {
+      customerName: "Acme Corp", invoiceDate: "2026-03-20", dueDate: "2026-04-03",
+      lineItems: [{ description: "Consulting", quantity: 5, unitPrice: 150 }],
+    },
+    dependencies: [], confidence: 0.92, notes: "Mock mode — invoice executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: {
+      summary: "Create invoice for Acme Corp, order 90010 → invoice 90011",
+      steps: [
+        { stepNumber: 1, description: 'GET /v2/customer — search "Acme Corp"', method: "GET", endpoint: "/v2/customer", queryParams: { name: "Acme Corp" }, resultKey: "customerSearch" },
+        { stepNumber: 2, description: 'POST /v2/order — create order', method: "POST", endpoint: "/v2/order", resultKey: "orderId" },
+        { stepNumber: 3, description: 'PUT /v2/order/90010/:invoice — create invoice', method: "PUT", endpoint: "/v2/order/90010/:invoice", resultKey: "invoiceId" },
+      ],
+    },
+    stepResults: [
+      { stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90001, name: "Acme Corp" }] }, duration: 30 },
+      { stepNumber: 2, success: true, statusCode: 201, data: { value: { id: 90010 } }, duration: 45 },
+      { stepNumber: 3, success: true, statusCode: 200, data: { value: { id: 90011 } }, duration: 40 },
+    ],
+    verificationPassed: true, logs: [], duration: 200,
+  };
+}
