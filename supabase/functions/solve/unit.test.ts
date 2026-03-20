@@ -26,7 +26,7 @@ Deno.test("heuristics: detects de employee_create", () => {
 });
 
 Deno.test("heuristics: detects es travel_expense_delete", () => {
-  const r = runHeuristics("Eliminar la nota de gastos de viaje del empleado Carlos", logger);
+  const r = runHeuristics("Eliminar el gasto de viaje del 15 de marzo por 1500 NOK", logger);
   assertEquals(r.likelyResource, "travelExpense");
   assertEquals(r.likelyAction, "delete");
 });
