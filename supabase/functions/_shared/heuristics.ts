@@ -38,6 +38,7 @@ const UPDATE_KEYWORDS = [
 ];
 
 const PRODUCT_KEYWORDS = ["product", "produkt", "producto", "Produkt", "produit", "produto"];
+const PAYMENT_KEYWORDS = ["payment", "betaling", "innbetaling", "pago", "Zahlung", "paiement", "pagamento", "betal", "paid", "bezahlt", "payé", "pagado"];
 const INVOICE_KEYWORDS = ["invoice", "faktura", "factura", "Rechnung", "facture", "fatura"];
 const PROJECT_KEYWORDS = ["project", "prosjekt", "proyecto", "Projekt", "projet", "projeto"];
 const DEPARTMENT_KEYWORDS = ["department", "avdeling", "departamento", "Abteilung", "département"];
