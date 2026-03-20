@@ -80,24 +80,51 @@ export async function runPipeline(
       }
     }
 
-    // 4. Try deterministic executor first
-    const taskType = resolveTaskType(parsed.intent, parsed.resourceType);
-    logger.info(`Task type resolved: ${taskType}`);
-
-    const executor = getExecutor(taskType);
+    // 4. Check solution cache first
+    const cachedPlan = await findCachedSolution(parsed, logger);
     const client = new TripletexClient(
       { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
       logger.child("tripletex")
     );
 
+    if (cachedPlan) {
+      logger.info("Found cached solution, executing");
+      // Remap field values from parsed.fields into the cached plan's bodies
+      const remappedPlan = remapCachedPlan(cachedPlan, parsed);
+      const cachedResults = await executeplan(remappedPlan, client, logger);
+      const cachedSuccess = cachedResults.every(r => r.success);
+
+      if (cachedSuccess) {
+        logger.info("Cached solution succeeded");
+        return {
+          status: "completed",
+          language: parsed.language,
+          parsedTask: parsed,
+          executionPlan: remappedPlan,
+          stepResults: cachedResults,
+          verificationPassed: true,
+          logs: logger.getEntries(),
+          duration: Date.now() - start,
+        };
+      }
+      logger.warn("Cached solution failed, falling through to executor");
+    }
+
+    // 5. Try deterministic executor
+    const taskType = resolveTaskType(parsed.intent, parsed.resourceType);
+    logger.info(`Task type resolved: ${taskType}`);
+
+    const executor = getExecutor(taskType);
+
     if (executor) {
-      // Deterministic path — use dedicated executor
       logger.info(`Using dedicated executor for ${taskType}`);
 
       const executorResult = await executor(parsed, client, logger);
       const allSucceeded = executorResult.stepResults.every((r) => r.success);
 
       if (allSucceeded) {
+        // Save successful plan for future reuse
+        saveSolution(parsed, executorResult.plan, logger).catch(() => {});
         return {
           status: "completed",
           language: parsed.language,
@@ -119,6 +146,10 @@ export async function runPipeline(
 
       const swarmResult = await runSwarmFallback(parsed, failError, executorResult.stepResults, client, logger);
       const swarmSuccess = swarmResult.stepResults.every(r => r.success);
+
+      if (swarmSuccess) {
+        saveSolution(parsed, swarmResult.plan, logger).catch(() => {});
+      }
 
       return {
         status: swarmSuccess ? "completed" : "failed",
