@@ -54,7 +54,7 @@ interface TrainResult {
 }
 
 async function generateTask(
-  openaiKey: string,
+  apiKey: string,
   resourceType: string,
   intent: string,
   language: string
