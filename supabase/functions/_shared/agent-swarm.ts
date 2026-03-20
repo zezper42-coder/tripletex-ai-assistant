@@ -1,4 +1,4 @@
-// Agent Swarm — GPT-5.4 dynamic fallback for failed or unsupported tasks
+// Agent Swarm — LLM dynamic fallback for failed or unsupported tasks
 
 import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
@@ -6,7 +6,7 @@ import { ParsedTask, ExecutionPlan, StepResult, ExecutionStep } from "./types.ts
 import { ExecutorResult } from "./task-router.ts";
 import { executeplan } from "./task-executor.ts";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const TRIPLETEX_API_REFERENCE = `
 Tripletex REST API v2 — Key endpoints:
@@ -98,10 +98,10 @@ export async function runSwarmFallback(
     previousError,
   });
 
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) {
-    swarmLogger.error("OPENAI_API_KEY not set");
-    return emptyResult("OPENAI_API_KEY not configured");
+  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!gatewayKey) {
+    swarmLogger.error("LOVABLE_API_KEY not set");
+    return emptyResult("LOVABLE_API_KEY not configured");
   }
 
   // Build context about what failed
@@ -111,7 +111,7 @@ export async function runSwarmFallback(
       ).join("\n")}`
     : "No previous API calls were attempted.";
 
-  const plan = await generateSwarmPlan(parsed, previousError, failureContext, openaiKey, swarmLogger);
+  const plan = await generateSwarmPlan(parsed, previousError, failureContext, gatewayKey, swarmLogger);
   if (!plan) {
     return emptyResult("Swarm failed to generate a plan");
   }
@@ -123,14 +123,14 @@ export async function runSwarmFallback(
   const allSucceeded = stepResults.every(r => r.success);
 
   if (!allSucceeded) {
-    // One retry: send errors back to GPT-5.4
+    // One retry: send errors back to LLM
     swarmLogger.info("First swarm attempt failed, retrying with error feedback");
     const retryError = stepResults
       .filter(r => !r.success)
       .map(r => `Step ${r.stepNumber}: HTTP ${r.statusCode} — ${r.error || JSON.stringify(r.data).substring(0, 500)}`)
       .join("\n");
 
-    const retryPlan = await generateSwarmPlan(parsed, retryError, failureContext, openaiKey, swarmLogger);
+    const retryPlan = await generateSwarmPlan(parsed, retryError, failureContext, gatewayKey, swarmLogger);
     if (retryPlan) {
       const retryResults = await executeplan(retryPlan, client, swarmLogger);
       const retrySuccess = retryResults.every(r => r.success);
@@ -153,7 +153,7 @@ async function generateSwarmPlan(
   parsed: ParsedTask,
   errorContext: string,
   failureDetails: string,
-  openaiKey: string,
+  apiKey: string,
   logger: Logger
 ): Promise<ExecutionPlan | null> {
   const systemPrompt = `You are a Tripletex API expert agent. Your job is to solve accounting tasks by generating precise API call sequences.
@@ -199,14 +199,14 @@ Generate an execution plan as JSON with this exact structure:
 Return ONLY the JSON object.`;
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openaiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5.4",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -216,7 +216,7 @@ Return ONLY the JSON object.`;
     });
 
     if (!response.ok) {
-      logger.error("Swarm GPT-5.4 call failed", { status: response.status });
+      logger.error("Swarm LLM call failed", { status: response.status });
       return null;
     }
 

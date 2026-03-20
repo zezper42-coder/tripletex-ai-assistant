@@ -54,7 +54,7 @@ interface TrainResult {
 }
 
 async function generateTask(
-  openaiKey: string,
+  apiKey: string,
   resourceType: string,
   intent: string,
   language: string
@@ -64,14 +64,14 @@ async function generateTask(
     .replace("{intent}", intent)
     .replace("{language}", language);
 
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openaiKey}`,
+      Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.4",
+      model: "openai/gpt-5",
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: `Generate a ${intent} task for ${resourceType} in ${language}.` },
@@ -112,10 +112,9 @@ serve(async (req) => {
       mockMode = false,
     } = body;
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!openaiKey) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
+    const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!gatewayKey) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -155,7 +154,7 @@ serve(async (req) => {
 
       let taskText = "";
       try {
-        taskText = await generateTask(openaiKey, resourceType, intent, language);
+        taskText = await generateTask(gatewayKey, resourceType, intent, language);
       } catch (err) {
         console.error(`[auto-train] Task generation failed:`, err);
         results.push({

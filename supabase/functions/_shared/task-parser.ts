@@ -1,7 +1,7 @@
 import { Logger } from "./logger.ts";
 import { ParsedTask, Language, Intent, ResourceType } from "./types.ts";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export async function parseTask(
   taskPrompt: string,
@@ -112,17 +112,17 @@ CRITICAL RULES:
 Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no, Storgata 1, 0123 Oslo)" →
 {"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","customerEmail":"a@b.no","address":"Storgata 1","postalCode":"0123","city":"Oslo","country":"Norge"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
 
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
+  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!gatewayKey) throw new Error("LOVABLE_API_KEY is not configured");
 
-  const response = await fetch(OPENAI_API_URL, {
+  const response = await fetch(AI_GATEWAY_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openaiKey}`,
+      Authorization: `Bearer ${gatewayKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.4",
+      model: "openai/gpt-5",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: taskPrompt },

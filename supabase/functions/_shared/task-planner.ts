@@ -1,7 +1,7 @@
 import { Logger } from "./logger.ts";
 import { ParsedTask, ExecutionPlan, ExecutionStep } from "./types.ts";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // Endpoint mapping for Tripletex API v2
 const RESOURCE_ENDPOINTS: Record<string, string> = {
@@ -104,17 +104,17 @@ Return the plan using the create_plan function.`;
     },
   ];
 
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
+  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!gatewayKey) throw new Error("LOVABLE_API_KEY is not configured");
 
-  const response = await fetch(OPENAI_API_URL, {
+  const response = await fetch(AI_GATEWAY_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openaiKey}`,
+      Authorization: `Bearer ${gatewayKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.4",
+      model: "openai/gpt-5",
       messages: [
         { role: "system", content: systemPrompt },
         {
