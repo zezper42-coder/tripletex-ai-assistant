@@ -67,7 +67,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   department_create: executeDepartmentCreate,
   creditNote_create: executeCreditNoteCreate,
   supplier_create: executeSupplierCreate,
-  supplier_update: executeCustomerUpdate, // Suppliers use customer endpoint
+  // supplier_update falls to swarm
   contact_create: executeContactCreate,
   voucher_create: executeVoucherCreate,
 };
