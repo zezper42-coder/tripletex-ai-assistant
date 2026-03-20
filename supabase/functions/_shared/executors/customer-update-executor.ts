@@ -19,8 +19,8 @@ export async function executeCustomerUpdate(
 
   // Resolve customer by ID, name, or org number
   let customerId = (f.id ?? f.customerId ?? f.customer_id) as number | undefined;
-  const customerName = (f.name ?? f.customerName ?? f.kunde ?? f.kundenavn) as string | undefined;
-  const orgNr = (f.organizationNumber ?? f.orgNumber) as string | undefined;
+  const customerName = (f.name ?? f.customerName ?? f.kunde ?? f.kundenavn ?? f.companyName ?? f.firmanavn) as string | undefined;
+  const orgNr = (f.organizationNumber ?? f.orgNumber ?? f.organisasjonsnummer ?? f.orgNr) as string | undefined;
 
   if (!customerId && (customerName || orgNr)) {
     stepNum++;
@@ -67,27 +67,35 @@ export async function executeCustomerUpdate(
     id: customerId,
     name: current.name, // Required field
   };
-  const newEmail = (f.email ?? f.emailAddress ?? f.epost) as string | undefined;
-  const newPhone = (f.phoneNumber ?? f.phone ?? f.telefon) as string | undefined;
-  const newInvoiceEmail = (f.invoiceEmail ?? f.fakturaEpost) as string | undefined;
-  const newAddress = (f.address ?? f.adresse) as string | undefined;
-  const newPostalCode = (f.postalCode ?? f.postnummer) as string | undefined;
-  const newCity = (f.city ?? f.poststed) as string | undefined;
+
+  // Extract update fields with comprehensive aliases
+  const newEmail = (f.email ?? f.emailAddress ?? f.epost ?? f.newEmail ?? f.customerEmail) as string | undefined;
+  const newPhone = (f.phoneNumber ?? f.phone ?? f.telefon ?? f.newPhone ?? f.customerPhone) as string | undefined;
+  const newInvoiceEmail = (f.invoiceEmail ?? f.fakturaEpost ?? f.newInvoiceEmail) as string | undefined;
+  const newAddress = (f.address ?? f.adresse ?? f.addressLine1 ?? f.newAddress) as string | undefined;
+  const newPostalCode = (f.postalCode ?? f.postnummer ?? f.zipCode ?? f.newPostalCode) as string | undefined;
+  const newCity = (f.city ?? f.poststed ?? f.by ?? f.newCity) as string | undefined;
+  const newCountry = (f.country ?? f.land ?? f.newCountry) as string | undefined;
   const newName = (f.newName ?? f.updatedName) as string | undefined;
+  const newOrgNr = (f.newOrganizationNumber ?? f.newOrgNumber) as string | undefined;
+  const newUrl = (f.url ?? f.website ?? f.nettside ?? f.newUrl) as string | undefined;
 
   if (newEmail) updateBody.email = newEmail.trim();
   if (newPhone) updateBody.phoneNumber = String(newPhone).trim();
   if (newInvoiceEmail) updateBody.invoiceEmail = newInvoiceEmail.trim();
   if (newName) updateBody.name = newName;
+  if (newOrgNr) updateBody.organizationNumber = newOrgNr;
+  if (newUrl) updateBody.url = newUrl;
   if (version !== undefined) updateBody.version = version;
 
-  if (newAddress || newPostalCode || newCity) {
+  if (newAddress || newPostalCode || newCity || newCountry) {
     const existing = (current.postalAddress ?? {}) as Record<string, unknown>;
     updateBody.postalAddress = {
       ...existing,
       ...(newAddress && { addressLine1: newAddress }),
       ...(newPostalCode && { postalCode: newPostalCode }),
       ...(newCity && { city: newCity }),
+      ...(newCountry && { country: { name: newCountry } }),
     };
   }
 

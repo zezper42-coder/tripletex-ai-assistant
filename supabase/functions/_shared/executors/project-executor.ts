@@ -14,18 +14,21 @@ export async function executeProjectCreate(
   const log = logger.child("executor:project");
   const f = parsed.fields ?? {};
 
-  const name = (f.name ?? f.projectName ?? f.prosjektnavn ?? f.nombre ?? f.Projektname) as string | undefined;
+  const name = (f.name ?? f.projectName ?? f.prosjektnavn ?? f.nombre ?? f.Projektname ?? f.nom) as string | undefined;
   const projectNumber = (f.number ?? f.projectNumber ?? f.prosjektnummer) as string | undefined;
-  const description = (f.description ?? f.beskrivelse ?? f.descripcion) as string | undefined;
-  const customerRef = (f.customer ?? f.customerName ?? f.kunde ?? f.kundenavn ?? f.cliente) as string | undefined;
-  const startDate = (f.startDate ?? f.startdato) as string | undefined;
-  const endDate = (f.endDate ?? f.sluttdato) as string | undefined;
+  const description = (f.description ?? f.beskrivelse ?? f.descripcion ?? f.Beschreibung) as string | undefined;
+  const customerRef = (f.customer ?? f.customerName ?? f.kunde ?? f.kundenavn ?? f.cliente ?? f.Kunde ?? f.client) as string | undefined;
+  const startDate = (f.startDate ?? f.startdato ?? f.fechaInicio ?? f.Startdatum ?? f.dateDebut) as string | undefined;
+  const endDate = (f.endDate ?? f.sluttdato ?? f.fechaFin ?? f.Enddatum ?? f.dateFin) as string | undefined;
 
   // Customer fields that might be in the parsed task (for multi-resource tasks)
   const customerEmail = (f.customerEmail ?? f.email ?? f.epost) as string | undefined;
   const customerPhone = (f.customerPhone ?? f.phoneNumber ?? f.telefon ?? f.phone) as string | undefined;
-  const customerOrgNr = (f.organizationNumber ?? f.orgNumber ?? f.organisasjonsnummer ?? f.customerOrgNumber) as string | undefined;
+  const customerOrgNr = (f.organizationNumber ?? f.orgNumber ?? f.organisasjonsnummer ?? f.customerOrgNumber ?? f.orgNr) as string | undefined;
   const customerAddress = (f.address ?? f.adresse) as string | undefined;
+  const customerPostalCode = (f.postalCode ?? f.postnummer) as string | undefined;
+  const customerCity = (f.city ?? f.poststed) as string | undefined;
+  const customerCountry = (f.country ?? f.land) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -98,6 +101,16 @@ export async function executeProjectCreate(
       if (customerPhone) customerBody.phoneNumber = customerPhone;
       if (customerOrgNr) customerBody.organizationNumber = customerOrgNr;
 
+      // Add address if available
+      if (customerAddress || customerPostalCode || customerCity || customerCountry) {
+        customerBody.postalAddress = {
+          ...(customerAddress && { addressLine1: customerAddress }),
+          ...(customerPostalCode && { postalCode: customerPostalCode }),
+          ...(customerCity && { city: customerCity }),
+          ...(customerCountry && { country: { name: customerCountry } }),
+        };
+      }
+
       log.info("Customer not found, creating", { customerBody });
       steps.push({
         stepNumber: stepCounter,
@@ -133,11 +146,14 @@ export async function executeProjectCreate(
 
   // Tripletex requires projectManager — look up first employee
   let projectManagerId: number | undefined;
-  const pmField = (f.projectManager ?? f.prosjektleder ?? f.projectManagerId) as string | number | undefined;
+  const pmField = (f.projectManager ?? f.prosjektleder ?? f.projectManagerId ?? f.prosjektleiar) as string | number | undefined;
   if (pmField && typeof pmField === "number") {
     projectManagerId = pmField;
   } else if (pmField && typeof pmField === "string") {
-    const empSearch = await client.get("/v2/employee", { firstName: pmField.split(" ")[0], count: "1", fields: "id" });
+    const parts = pmField.trim().split(/\s+/);
+    const searchParams: Record<string, string> = { firstName: parts[0], count: "1", fields: "id" };
+    if (parts.length > 1) searchParams.lastName = parts.slice(1).join(" ");
+    const empSearch = await client.get("/v2/employee", searchParams);
     if (empSearch.status === 200) {
       const vals = extractListValues(empSearch.data);
       if (vals.length > 0) projectManagerId = vals[0].id as number;

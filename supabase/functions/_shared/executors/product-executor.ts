@@ -15,14 +15,17 @@ export async function executeProductCreate(
   const log = logger.child("executor:product");
   const f = parsed.fields;
 
-  // Normalize field aliases
-  const name = (f.name ?? f.productName ?? f.produktnavn ?? f.nombre) as string | undefined;
-  const number = (f.number ?? f.productNumber ?? f.code ?? f.produktnummer) as string | undefined;
-  const price = (f.price ?? f.priceExcludingVatCurrency ?? f.pris ?? f.precio ?? f.prix) as number | string | undefined;
-  const description = (f.description ?? f.beskrivelse ?? f.descripcion ?? f.Beschreibung) as string | undefined;
-  const vatRate = (f.vatRate ?? f.mvaRate ?? f.vat ?? f.mva) as number | undefined;
+  // Normalize field aliases — comprehensive multilingual
+  const name = (f.name ?? f.productName ?? f.produktnavn ?? f.nombre ?? f.Produktname ?? f.nom) as string | undefined;
+  const number = (f.number ?? f.productNumber ?? f.code ?? f.produktnummer ?? f.sku ?? f.artikkelnummer ?? f.varenummer) as string | undefined;
+  const price = (f.price ?? f.priceExcludingVatCurrency ?? f.pris ?? f.precio ?? f.prix ?? f.Preis ?? f.unitPrice) as number | string | undefined;
+  const cost = (f.cost ?? f.costExcludingVatCurrency ?? f.innkjøpspris ?? f.kostpris ?? f.costo ?? f.Kosten) as number | string | undefined;
+  const description = (f.description ?? f.beskrivelse ?? f.descripcion ?? f.Beschreibung ?? f.descriptif) as string | undefined;
+  const unit = (f.unit ?? f.enhet ?? f.unidad ?? f.Einheit ?? f.unité) as string | undefined;
+  const vatRate = (f.vatRate ?? f.mvaRate ?? f.vat ?? f.mva ?? f.mvaSats) as number | undefined;
   const vatCode = (f.vatCode ?? f.mvaCode ?? f.vatNumber) as number | undefined;
   let vatTypeId = (f.vatTypeId ?? f.vatType ?? f.mvaType) as number | undefined;
+  const isInactive = f.isInactive as boolean | undefined;
 
   // VAT lookup if rate/code provided but no explicit ID
   if (!vatTypeId && (vatRate != null || vatCode != null)) {
@@ -55,8 +58,11 @@ export async function executeProductCreate(
   };
   if (normalizedFields.number) body.number = normalizedFields.number;
   if (normalizedFields.priceExcludingVatCurrency !== undefined) body.priceExcludingVatCurrency = normalizedFields.priceExcludingVatCurrency;
+  if (cost !== undefined) body.costExcludingVatCurrency = Number(cost);
   if (normalizedFields.description) body.description = normalizedFields.description;
   if (normalizedFields.vatType) body.vatType = normalizedFields.vatType;
+  if (unit) body.unit = unit;
+  if (isInactive !== undefined) body.isInactive = isInactive;
 
   const plan: ExecutionPlan = {
     summary: `Create product: ${normalizedFields.name}`,
@@ -87,6 +93,15 @@ export async function executeProductCreate(
       response = await client.postWithRetry("/v2/product", body);
       duration += Date.now() - start2;
     }
+  }
+
+  // If unit caused a 422, retry without it
+  if (response.status === 422 && body.unit) {
+    log.warn("Retrying without unit field");
+    delete body.unit;
+    const start2 = Date.now();
+    response = await client.postWithRetry("/v2/product", body);
+    duration += Date.now() - start2;
   }
   
   const success = response.status >= 200 && response.status < 300;

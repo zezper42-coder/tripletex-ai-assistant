@@ -12,70 +12,76 @@ const TRIPLETEX_API_REFERENCE = `
 Tripletex REST API v2 — Key endpoints:
 
 EMPLOYEES:
-- GET /employee?firstName=X&lastName=Y — search employees
-- POST /employee — create employee (required: firstName, lastName, userType: "STANDARD"). Do NOT include dateOfEmployment or employmentDate — those fields do not exist.
-- PUT /employee/{id} — update employee (send full object with version)
-- PUT /employee/{id}/entitlement — set roles (e.g. all_administrator)
+- GET /v2/employee?firstName=X&lastName=Y — search employees
+- POST /v2/employee — create employee. Required: firstName, lastName, userType: "STANDARD". Do NOT include dateOfEmployment.
+- PUT /v2/employee/{id} — update employee. Must include "version" from GET. Required: id, firstName, lastName.
+- PUT /v2/employee/entitlement/:grantEntitlementsByTemplate?employeeId=N&template=all_administrator — grant admin role
+- POST /v2/employment — create employment record. Required: employee.id, startDate.
 
 CUSTOMERS:
-- GET /customer?name=X — search customers
-- POST /customer — create customer (required: name)
-- PUT /customer/{id} — update customer
+- GET /v2/customer?name=X — search customers
+- POST /v2/customer — create customer. Required: name. Optional: email, phoneNumber, organizationNumber, invoiceEmail, url.
+- PUT /v2/customer/{id} — update customer. Must include "version" from GET.
+- Address: use "postalAddress": {"addressLine1":"...", "postalCode":"...", "city":"...", "country":{"name":"Norge"}}. NOT "address".
 
 SUPPLIERS:
-- POST /customer — create with isSupplier: true
-- GET /customer?isSupplier=true&name=X
+- POST /v2/customer — create with isSupplier: true, isCustomer: false. Same fields as customer.
+- GET /v2/customer?isSupplier=true&name=X
 
 PRODUCTS:
-- GET /product?name=X — search products
-- POST /product — create product (required: name)
+- GET /v2/product?name=X — search products
+- POST /v2/product — create product. Required: name. Optional: number, priceExcludingVatCurrency (number), costExcludingVatCurrency, description, unit (e.g. "stk"), vatType:{id:N}.
+- PUT /v2/product/{id} — update product.
 
 INVOICES:
-- POST /invoice — create invoice (required: invoiceDate, invoiceDueDate, orders[])
-- POST /order — create order first (required: customer.id, orderDate, deliveryDate, orderLines[])
-- PUT /order/{id}/:invoice — create invoice from order (NOT POST, must be PUT with invoiceDate and invoiceDueDate in body)
+- POST /v2/order — create order first. Required: customer:{id:N}, orderDate (YYYY-MM-DD), deliveryDate (YYYY-MM-DD), orderLines:[{description, count, unitCostCurrency, unitPriceExcludingVatCurrency}].
+- PUT /v2/order/{id}/:invoice — convert order to invoice. Body: {invoiceDate, invoiceDueDate}. This is PUT, NOT POST.
+- POST /v2/invoice — alternative: create invoice directly with orders:[{id:N}], invoiceDate, invoiceDueDate.
 
 PAYMENTS:
-- POST /payment — register payment (required: amount, date, paymentType.id)
-- GET /ledger/paymentType — list payment types
+- POST /v2/payment — register payment. Required: amount, paymentDate, invoice:{id:N}.
+- GET /v2/ledger/paymentType — list payment types
 
 CREDIT NOTES:
-- PUT /invoice/{id}/:createCreditNote — create credit note from invoice
+- PUT /v2/invoice/{id}/:createCreditNote — create credit note from invoice
 
 PROJECTS:
-- POST /project — create project (required: name, projectManager.id, startDate)
+- POST /v2/project — Required: name, projectManager:{id:N}, startDate (YYYY-MM-DD). Optional: customer:{id:N}, endDate, number, description.
 
 DEPARTMENTS:
-- POST /department — create department (required: name, departmentNumber)
+- POST /v2/department — Required: name, departmentNumber (numeric string).
 
 TRAVEL EXPENSES:
-- POST /travelExpense — create travel expense
-- DELETE /travelExpense/{id} — delete travel expense
-- GET /travelExpense?employeeId=X
+- POST /v2/travelExpense — Required: employee:{id:N}, title. Optional: departureDate, returnDate, departure, destination.
+- DELETE /v2/travelExpense/{id} — delete travel expense
+- GET /v2/travelExpense?employeeId=X
 
 VOUCHERS:
-- POST /ledger/voucher — create voucher (required: date, description, postings[])
-- GET /ledger/voucher?dateFrom=X&dateTo=Y
+- POST /v2/ledger/voucher — Required: date, description, postings:[{account:{id:N}, amountGross:N}]. Debit=positive, credit=negative.
 
 CONTACTS:
-- POST /contact — create contact (required: firstName, lastName, customer.id)
+- POST /v2/contact — Required: firstName, lastName, customer:{id:N}. Optional: email, phoneNumber.
 
 ADDRESSES:
-- POST /address — create address
+- POST /v2/address — create address
 
 ACCOUNTS:
-- GET /ledger/account?number=X — lookup account
+- GET /v2/account?number=X — lookup account by number
+
+VAT:
+- GET /v2/ledger/vatType — list VAT types
 
 IMPORTANT CONVENTIONS:
 - POST returns { value: { id: ... } }
 - GET list returns { fullResultSize: N, values: [...] }
-- PUT requires the "version" field from the GET response
+- PUT requires "version" field from the GET response
 - References use { id: N } format, e.g. customer: { id: 123 }
 - Dates are "YYYY-MM-DD" strings
 - Auth: Basic with username "0" and session_token as password
-- Customer address uses "postalAddress" NOT "address" (which doesn't exist)
-- Employee does NOT have dateOfEmployment or employmentDate fields
-- Order REQUIRES orderDate field (YYYY-MM-DD)
+- Customer/supplier address: use "postalAddress" with addressLine1, postalCode, city, country:{name:"..."}. NOT "address".
+- Employee does NOT have dateOfEmployment. Use POST /v2/employment for start dates.
+- Order REQUIRES orderDate (YYYY-MM-DD)
+- Country is always an object: { "name": "Norge" } not a string
 `;
 
 export async function runSwarmFallback(
