@@ -14,6 +14,7 @@
 | `department_create` | department-executor.ts | ✅ |
 | `travel_expense_delete` | travel-expense-executor.ts | ✅ |
 | `travel_expense_create` | travel-expense-create-executor.ts | ✅ |
+| `credit_note_create` | credit-note-executor.ts | ✅ |
 
 ### Remaining / future
 - `travel_expense_update` — not yet needed

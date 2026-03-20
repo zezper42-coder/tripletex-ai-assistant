@@ -43,4 +43,11 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   es_travel_create: "Crear un gasto de viaje para el empleado Carlos García, 15 de marzo, 1500 NOK, reunión con cliente",
   en_travel_create_email: "Register travel expense for jane.smith@acme.no, travel date 2026-03-20, purpose: customer meeting, amount 2800 NOK",
   nb_travel_create_route: "Registrer reiseregning for Kari Nordmann fra Trondheim til Stavanger, formål kundemøte, 2200 NOK",
+  // Credit note creation
+  nb_credit_note: "Opprett kreditnota for faktura 10025, feil beløp",
+  en_credit_note: "Create a credit note for invoice #10030, reason: duplicate billing",
+  de_credit_note: "Gutschrift für Rechnung 10042 erstellen, Grund: falscher Betrag",
+  es_credit_note: "Crear una nota de crédito para la factura del cliente Empresa SL",
+  pt_credit_note: "Criar nota de crédito para a fatura 10050, motivo: cobrança duplicada",
+  fr_credit_note: "Créer une note de crédit pour la facture #10055 du client Dupont SARL",
 };

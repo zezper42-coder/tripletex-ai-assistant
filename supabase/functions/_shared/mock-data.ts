@@ -263,3 +263,27 @@ function buildMockDepartment(): PipelineResult {
     verificationPassed: true, logs: [], duration: 110,
   };
 }
+
+function buildMockCreditNote(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create credit note for invoice 10025",
+    intent: "create", resourceType: "creditNote",
+    fields: { invoiceNumber: "10025", reason: "Wrong amount", creditFullInvoice: true },
+    dependencies: [], confidence: 0.92, notes: "Mock mode — credit note executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: {
+      summary: "Credit note created for invoice 90011, credit note ID: 90050",
+      steps: [
+        { stepNumber: 1, description: 'GET /v2/invoice — search by number "10025"', method: "GET", endpoint: "/v2/invoice", queryParams: { invoiceNumber: "10025" }, resultKey: "invoiceSearch" },
+        { stepNumber: 2, description: 'PUT /v2/invoice/90011/:createCreditNote — full credit', method: "PUT", endpoint: "/v2/invoice/90011/:createCreditNote", resultKey: "creditNoteId" },
+      ],
+    },
+    stepResults: [
+      { stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90011, invoiceNumber: 10025, amount: 12500 }] }, duration: 30 },
+      { stepNumber: 2, success: true, statusCode: 200, data: { value: { id: 90050 } }, duration: 40 },
+    ],
+    verificationPassed: true, logs: [], duration: 160,
+  };
+}
