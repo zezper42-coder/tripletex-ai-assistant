@@ -5,10 +5,7 @@ import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { ExecutorResult } from "../task-router.ts";
 import { validateCreditNoteFields } from "../field-validation.ts";
-
-// TODO: Confirm exact Tripletex credit note endpoint and payload shape with live API
-// Primary path: PUT /v2/invoice/{id}/:createCreditNote
-// Fallback: POST /v2/invoice with negative line amounts referencing original invoice
+import { tryCreditNoteCreation } from "../tripletex-compat.ts";
 
 export async function executeCreditNoteCreate(
   parsed: ParsedTask,
