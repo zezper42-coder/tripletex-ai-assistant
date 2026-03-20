@@ -1,4 +1,4 @@
-// Supplier update executor — GET + merge + PUT (uses /v2/customer with isSupplier)
+// Supplier update executor — GET + merge + PUT (uses /v2/supplier)
 import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask } from "../types.ts";
@@ -16,13 +16,12 @@ export async function executeSupplierUpdate(
   const name = (f.name ?? f.supplierName ?? f.leverandør ?? f.leverandørnavn) as string | undefined;
   const id = (f.id ?? f.supplierId) as number | undefined;
 
-  // Suppliers are stored as customers with isSupplier=true
   let supplierId = id ? Number(id) : undefined;
   const stepResults: any[] = [];
 
   if (!supplierId && name) {
     const start = Date.now();
-    const res = await client.get("/v2/customer", { name, isSupplier: "true", fields: "*", count: "5" });
+    const res = await client.get("/v2/supplier", { name, fields: "*", count: "5" });
     stepResults.push({ stepNumber: 1, success: res.status === 200, statusCode: res.status, data: res.data, duration: Date.now() - start });
     const vals = extractListValues(res.data);
     const exact = vals.find(v => String(v.name).toLowerCase() === name.toLowerCase());
@@ -36,7 +35,7 @@ export async function executeSupplierUpdate(
   const newPhone = (f.phoneNumber ?? f.phone ?? f.telefon) as string | undefined;
   const newName = (f.newName ?? f.updatedName) as string | undefined;
   const newOrgNr = (f.newOrganizationNumber ?? f.organizationNumber ?? f.orgNr) as string | undefined;
-  const newUrl = (f.url ?? f.website ?? f.nettside) as string | undefined;
+  const newWebsite = (f.url ?? f.website ?? f.nettside) as string | undefined;
   const newAddress = (f.address ?? f.adresse) as string | undefined;
   const newPostalCode = (f.postalCode ?? f.postnummer) as string | undefined;
   const newCity = (f.city ?? f.poststed) as string | undefined;
@@ -45,7 +44,7 @@ export async function executeSupplierUpdate(
   if (newPhone) updateFields.phoneNumber = String(newPhone).trim();
   if (newName) updateFields.name = newName;
   if (newOrgNr) updateFields.organizationNumber = newOrgNr;
-  if (newUrl) updateFields.url = newUrl;
+  if (newWebsite) updateFields.website = newWebsite;
   if (newAddress || newPostalCode || newCity) {
     updateFields.postalAddress = {
       ...(newAddress && { addressLine1: newAddress }),
@@ -54,7 +53,7 @@ export async function executeSupplierUpdate(
     };
   }
 
-  const update = await genericUpdate(client, log, "/v2/customer", supplierId, updateFields, ["name"]);
+  const update = await genericUpdate(client, log, "/v2/supplier", supplierId, updateFields, ["name"]);
   const updateResults = update.stepResults.map((r, i) => ({ ...r, stepNumber: stepResults.length + i + 1 }));
 
   return {

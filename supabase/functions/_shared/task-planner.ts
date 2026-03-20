@@ -1,26 +1,8 @@
 import { Logger } from "./logger.ts";
 import { ParsedTask, ExecutionPlan, ExecutionStep } from "./types.ts";
+import { COMPACT_API_REFERENCE } from "./tripletex-api-reference.ts";
 
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
-// Endpoint mapping for Tripletex API v2
-const RESOURCE_ENDPOINTS: Record<string, string> = {
-  employee: "/v2/employee",
-  customer: "/v2/customer",
-  product: "/v2/product",
-  invoice: "/v2/invoice",
-  payment: "/v2/payment",
-  creditNote: "/v2/invoice",  // credit notes use invoice endpoint with specific type
-  project: "/v2/project",
-  travelExpense: "/v2/travelExpense",
-  department: "/v2/department",
-  order: "/v2/order",
-  account: "/v2/ledger/account",
-  voucher: "/v2/ledger/voucher",
-  contact: "/v2/contact",
-  address: "/v2/address",
-  activity: "/v2/activity",
-};
 
 export async function planExecution(
   parsed: ParsedTask,
@@ -29,31 +11,21 @@ export async function planExecution(
 ): Promise<ExecutionPlan> {
   logger.info("Planning execution", { intent: parsed.intent, resource: parsed.resourceType });
 
-  const systemPrompt = `You are an expert Tripletex ERP API planner. Given a parsed task, create an execution plan with specific Tripletex API v2 calls.
+  const systemPrompt = `You are an expert Tripletex ERP API planner. Given a parsed task, create an execution plan with specific API calls.
 
-Known Tripletex API v2 endpoints:
-${Object.entries(RESOURCE_ENDPOINTS).map(([k, v]) => `- ${k}: ${v}`).join("\n")}
+${COMPACT_API_REFERENCE}
 
-Common patterns:
-- POST /v2/employee to create employee
-- POST /v2/customer to create customer  
-- POST /v2/invoice to create invoice (needs customer ID, invoice date, due date, order lines)
-- POST /v2/invoice/{id}/:createCreditNote to create credit note
-- POST /v2/payment to register payment
-- POST /v2/project to create project (needs name, projectManager with employee ID)
-- POST /v2/travelExpense to create travel expense
-- POST /v2/department to create department
-- PUT endpoints for updates (same path + /{id})
-- DELETE endpoints for deletion (same path + /{id})
-- GET endpoints for listing/fetching
-
-For invoices, the body structure is:
-{ "customer": {"id": <customerId>}, "invoiceDate": "YYYY-MM-DD", "invoiceDueDate": "YYYY-MM-DD", "orders": [...] }
-
-For employees, key fields: firstName, lastName, email, etc.
-For customers, key fields: name, email, phoneNumber, etc.
-
-Important: some resources require looking up existing IDs first (e.g., creating an invoice needs a customer ID).
+CRITICAL RULES:
+1. All entity references use {id: N} format, e.g. customer: {id: 123}
+2. Payment registration uses QUERY PARAMS on PUT /invoice/{id}/:payment, NOT a request body
+3. Invoice creation: POST /order then PUT /order/{id}/:invoice?invoiceDate=YYYY-MM-DD
+4. Use postalAddress (NOT address) for customers and suppliers
+5. Employment dates go via POST /employee/employment, NOT on the employee object
+6. orderDate is REQUIRED when creating orders
+7. projectManager is REQUIRED when creating projects (must be an employee ID)
+8. Always include orderLines when creating orders
+9. For updates: GET the resource first to get the current version number, then PUT with version
+10. For deletes: just DELETE /resource/{id}
 
 Return the plan using the create_plan function.`;
 
