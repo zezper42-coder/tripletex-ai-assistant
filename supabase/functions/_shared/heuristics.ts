@@ -42,6 +42,7 @@ const PAYMENT_KEYWORDS = ["payment", "betaling", "innbetaling", "pago", "Zahlung
 const INVOICE_KEYWORDS = ["invoice", "faktura", "factura", "Rechnung", "facture", "fatura"];
 const PROJECT_KEYWORDS = ["project", "prosjekt", "proyecto", "Projekt", "projet", "projeto"];
 const DEPARTMENT_KEYWORDS = ["department", "avdeling", "departamento", "Abteilung", "département"];
+const CREDIT_NOTE_KEYWORDS = ["credit note", "kreditnota", "kreditering", "krediter", "Gutschrift", "nota de crédito", "note de crédit", "nota di credito", "credit invoice", "reverse invoice", "reverser faktura"];
 const TRAVEL_KEYWORDS = ["travel expense", "reiseregning", "reiseutgift", "gasto de viaje", "Reisekosten", "frais de voyage", "despesa de viagem"];
 
 function containsAny(text: string, keywords: string[]): boolean {
