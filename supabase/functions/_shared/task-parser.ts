@@ -13,6 +13,19 @@ export async function parseTask(
   const systemPrompt = `You are an expert accounting task parser for Tripletex ERP. 
 Given a task description (possibly in Norwegian, English, Spanish, Portuguese, Nynorsk, German, or French), extract structured information.
 
+CRITICAL: The "fields" object must contain ALL data values mentioned in the task. For example:
+- Customer name → fields.name
+- Email → fields.email  
+- Phone → fields.phoneNumber
+- Organization number → fields.organizationNumber
+- Employee first/last name → fields.firstName, fields.lastName
+- Product name/price → fields.name, fields.priceExcludingVatCurrency
+- Invoice details → fields.customerName, fields.lineItems
+- Amount → fields.amount
+- Date → fields.date or fields.invoiceDate
+
+Never return an empty fields object if the task mentions any data values.
+
 You must call the parse_task function with your analysis.`;
 
   const tools = [
