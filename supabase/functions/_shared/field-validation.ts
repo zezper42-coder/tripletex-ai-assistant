@@ -53,3 +53,29 @@ export function validateEmployeeFields(fields: Record<string, unknown>): Validat
     ...validatePhone(fields.phoneNumberMobile || fields.phone),
   ];
 }
+
+export function validateProductFields(fields: Record<string, unknown>): ValidationError[] {
+  return [
+    ...validateRequired(fields, ["name"]),
+  ];
+}
+
+export function validateProjectFields(fields: Record<string, unknown>): ValidationError[] {
+  return [
+    ...validateRequired(fields, ["name"]),
+  ];
+}
+
+export function validateTravelExpenseDeleteFields(fields: Record<string, unknown>): ValidationError[] {
+  // At least one identifier must be present for safe deletion
+  const hasId = fields.id !== undefined;
+  const hasEmployee = fields.employeeName !== undefined;
+  const hasDate = fields.date !== undefined;
+  const hasAmount = fields.amount !== undefined;
+  const hasDescription = fields.description !== undefined;
+
+  if (!hasId && !hasEmployee && !hasDate && !hasAmount && !hasDescription) {
+    return [{ field: "identifiers", message: "At least one identifier required (id, employee, date, amount, or description)" }];
+  }
+  return [];
+}
