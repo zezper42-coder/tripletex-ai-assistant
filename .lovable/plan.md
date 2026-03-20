@@ -1,67 +1,77 @@
 
 
-# Plan: GPT-5.4 overalt + Agent Swarm fallback
+# Plan: Auto-tester med GPT-5.4 oppgåvegenerator + treningsloop
 
-## Del 1: Alle modellar til GPT-5.4
+## Oversikt
 
-Tre filer brukar LLM-kall. To er allereie på GPT-5.4, éin brukar Gemini via gateway:
+Lagar ein ny edge function `auto-train` og ein ny UI-fane i test-konsollen. GPT-5.4 genererer realistiske, vanskelege Tripletex-oppgåver (med tekst, PDF-vedlegg, bilete, korrupte filer, fleirspråklege oppgåver). Kvar oppgåve vert køyrt mot `/solve`. Feil vert fanga opp, og løysingar vert lagra i `learned_solutions` for framtidig gjenbruk.
 
-| Fil | No | Etter |
-|---|---|---|
-| `task-parser.ts` | `gpt-5.4` (direkte OpenAI) | Uendra |
-| `task-planner.ts` | `gpt-5.4` (direkte OpenAI) | Uendra |
-| `attachment-handler.ts` | `gemini-3.1-pro-preview` (Lovable gateway) | `gpt-5.4` (direkte OpenAI) |
+## Del 1: Ny edge function `supabase/functions/auto-train/index.ts`
 
-**Endring**: `attachment-handler.ts` — byt frå Lovable AI Gateway til direkte OpenAI API med `gpt-5.4`. GPT-5.4 støttar vision/bilete, så OCR-funksjonaliteten vert betre med same modell.
+Éin funksjon som:
 
-## Del 2: Agent Swarm — dynamisk kode-generering som fallback
+1. **Genererer oppgåver**: Kallar GPT-5.4 med eit system-prompt som ber den generere ei realistisk Tripletex-oppgåve. Promptet inkluderer alle støtta ressurstypar og ber om variasjon i:
+   - Språk (nb, nn, en, de, es, pt, fr)
+   - Ressurstype (customer, employee, invoice, payment, creditNote, voucher, travelExpense, project, department, supplier, contact, product)
+   - Intent (create, update, delete, list)
+   - Kompleksitet (enkle, fleirstegs, med vedlegg)
+   - Vedlegg (genererer fake base64 PDF/bilete med oppgåvedata innbakt)
 
-Når ein executor feilar ELLER ingen executor finst, aktiverer vi ein "swarm agent" som:
+2. **Køyrer oppgåva internt**: Kallar `runPipeline()` direkte (ikkje HTTP) med Tripletex-credentials frå request body.
 
-1. Sender feilen + oppgåva + Tripletex API-dokumentasjon til GPT-5.4
-2. GPT-5.4 genererer ein serie med konkrete API-kall (method, endpoint, body) som løyser oppgåva
-3. Systemet køyrer desse API-kalla mot Tripletex
-4. Om det feilar igjen, sender vi feilmeldinga tilbake til GPT-5.4 for éin retry-runde
+3. **Loggar resultat**: Returnerer ein rapport med kva som lukkast/feila, kva swarm-agenten gjorde, og kva som vart lagra i cache.
 
-### Ny fil: `supabase/functions/_shared/agent-swarm.ts`
+4. **Batch-modus**: Tek `iterations` parameter (default 10). Køyrer N runder og returnerer aggregert resultat.
 
-```text
-┌─────────────────┐
-│  Executor feiler │──────────┐
-│  ELLER unknown   │          │
-└─────────────────┘          ▼
-                    ┌──────────────────┐
-                    │  GPT-5.4 Swarm   │
-                    │  Analyserer feil  │
-                    │  + oppgåve        │
-                    │  Genererer plan   │
-                    └────────┬─────────┘
-                             ▼
-                    ┌──────────────────┐
-                    │  Køyr API-kall   │
-                    │  mot Tripletex   │
-                    └────────┬─────────┘
-                             │
-                        Feilar? ──▶ Retry med feilmelding (1 gong)
-                             │
-                        Suksess ──▶ Return completed
+Request body:
+```json
+{
+  "tripletexApiUrl": "https://api.tripletex.io",
+  "sessionToken": "...",
+  "iterations": 20,
+  "categories": ["customer", "invoice", "employee"]  // optional filter
+}
 ```
 
-Funksjonen tek inn: parsed task, feilmelding frå førre forsøk, TripletexClient, og returnerer ExecutorResult.
+Response:
+```json
+{
+  "totalRuns": 20,
+  "succeeded": 17,
+  "failed": 3,
+  "newSolutionsLearned": 12,
+  "results": [
+    { "task": "...", "category": "invoice_create", "status": "completed", "swarmUsed": false, "duration": 2300 },
+    ...
+  ]
+}
+```
 
-GPT-5.4 får eit system-prompt med komplett Tripletex API-referanse og vert beden om å returnere ei liste med API-kall via tool calling (same format som task-planner, men med ekstra kontekst om kva som gjekk galt).
+## Del 2: Oppdater `SolveTestPanel.tsx` — ny "Auto Train" fane
 
-### Endring i `agent-pipeline.ts`
+Legg til ein ny tab i test-konsollen med:
 
-- Etter at ein dedicated executor feilar (linje 98-101): kall swarm agent med feilinfo
-- Etter at LLM planner-fallback feilar (linje 123-127): kall swarm agent med feilinfo
-- Swarm-agenten er siste forsøk før vi returnerer "failed"
+- **Iterations** input (tal, default 10)
+- **Category filter** (multi-select checkboxes for resource types)
+- **Tripletex credentials** (gjenbruk eksisterande felt)
+- **"Start Training" knapp** som kallar `/auto-train`
+- **Live resultat-tabell** som viser kvar oppgåve med status, duration, om swarm vart brukt
+- **Aggregert statistikk** øvst: total, succeeded, failed, solutions learned
+- **Progress bar** som oppdaterer seg undervegs
 
-## Oppsummering av endringar
+## Del 3: Filar som vert endra/oppretta
 
 | Fil | Endring |
 |---|---|
-| `attachment-handler.ts` | Byt til direkte OpenAI API med gpt-5.4 |
-| `agent-swarm.ts` (ny) | Agent swarm med GPT-5.4 for dynamisk problemløysing |
-| `agent-pipeline.ts` | Integrer swarm som fallback ved feil |
+| `supabase/functions/auto-train/index.ts` | Ny edge function — oppgåvegenerator + pipeline-runner |
+| `src/components/SolveTestPanel.tsx` | Ny "Auto Train" fane med UI for batch-trening |
+
+## Tekniske detaljar
+
+- Oppgåvegeneratoren brukar GPT-5.4 via direkte OpenAI API (`OPENAI_API_KEY`)
+- Pipeline køyrer med ekte Tripletex-credentials (ikkje mock mode)
+- Kvar iterasjon: generate → solve → log → neste
+- Resultata inkluderer om `swarm` vart aktivert og om løysinga vart lagra i cache
+- Edge function har 5-min timeout per request, så vi held iterasjonar innanfor den grensa
+- GPT-5.4 vert bedt om å variere mellom enkle og komplekse oppgåver, inkludert multi-steg-oppgåver (t.d. "opprett kunde, lag faktura, registrer betaling")
 
