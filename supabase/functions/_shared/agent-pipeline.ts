@@ -57,14 +57,28 @@ export async function runPipeline(
       logger.info(`Confidence adjusted: ${parsed.confidence} (boost: +${heuristics.confidenceBoost})`);
     }
 
-    // Cross-validate heuristics vs LLM
+    // Cross-validate heuristics vs LLM — trust heuristics when signals are strong
     if (heuristics.likelyResource && heuristics.likelyResource !== parsed.resourceType) {
+      const heuristicSignalCount = heuristics.signals.length;
       logger.warn("Heuristic/LLM resource mismatch", {
         heuristic: heuristics.likelyResource,
         llm: parsed.resourceType,
         signals: heuristics.signals,
+        heuristicSignalCount,
       });
-      // Trust LLM but log the mismatch
+
+      // If heuristics have 3+ signals AND the LLM confidence is not very high,
+      // override LLM with heuristic. This prevents misclassification.
+      if (heuristicSignalCount >= 3 && parsed.confidence < 0.95) {
+        logger.info(`Overriding LLM resourceType "${parsed.resourceType}" → heuristic "${heuristics.likelyResource}"`, {
+          reason: "Strong heuristic signals outweigh moderate LLM confidence",
+        });
+        parsed.resourceType = heuristics.likelyResource as any;
+      }
+      // Also override intent if heuristics detected it
+      if (heuristics.likelyAction && heuristics.likelyAction !== parsed.intent) {
+        parsed.intent = heuristics.likelyAction as any;
+      }
     }
 
     // 4. Try deterministic executor first
