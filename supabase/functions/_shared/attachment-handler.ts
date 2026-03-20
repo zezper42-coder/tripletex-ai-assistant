@@ -68,6 +68,12 @@ async function extractWithVision(
 ): Promise<string | undefined> {
   logger.info(`Attempting vision extraction for ${att.filename}`);
 
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) {
+    logger.warn("OPENAI_API_KEY not set, skipping vision extraction");
+    return undefined;
+  }
+
   const imageContent = att.base64
     ? { type: "image_url" as const, image_url: { url: `data:${att.mimeType};base64,${att.base64}` } }
     : att.url
@@ -76,14 +82,14 @@ async function extractWithVision(
 
   if (!imageContent) return undefined;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3.1-pro-preview",
+      model: "gpt-5.4",
       messages: [
         {
           role: "user",
@@ -106,7 +112,7 @@ Return ONLY valid JSON, no markdown.` },
 
   if (!response.ok) {
     const errText = await response.text();
-    logger.warn("Vision API failed", { status: response.status });
+    logger.warn("OpenAI Vision API failed", { status: response.status, error: errText });
     return undefined;
   }
 
