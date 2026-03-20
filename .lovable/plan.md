@@ -1,51 +1,65 @@
 
 
-## Platform Constraint
+## Add Product, Project, and Travel Expense Delete Executors
 
-Lovable cannot run Python or FastAPI. The platform supports **React/Vite** for frontend and **Supabase Edge Functions** (Deno/TypeScript) for backend. This project already has a working `POST /solve` edge function and test UI built in previous iterations.
+### What changes
 
-## What Already Exists
+**1. New executor: `supabase/functions/_shared/executors/product-executor.ts`**
+- Extract fields: name, number/code, price (priceExcludingVatCurrency), vatType, description
+- Normalize field aliases across languages
+- Validate: `name` required
+- POST `/v2/product` with minimal valid body
+- Verify via GET `/v2/product/{id}`
+- TODO markers for VAT type lookup (may need GET `/v2/ledger/vatType` first)
 
-- `supabase/functions/solve/index.ts` — POST /solve endpoint with full pipeline
-- `supabase/functions/_shared/` — modular pipeline (parser, planner, executor, verifier, tripletex-client, logger, types, mock-data, attachment-handler)
-- `src/components/SolveTestPanel.tsx` — developer test UI with prompt input, credentials, mock toggle, tabbed results
-- `src/lib/sample-prompts.ts` — multi-language sample prompts
+**2. New executor: `supabase/functions/_shared/executors/project-executor.ts`**
+- Extract fields: name, projectNumber, description, customer reference
+- Validate: `name` required
+- If customer name referenced: search via GET `/v2/customer?name={exact}` with minimal scope
+- If customer found: link via `customer.id` in project body
+- If customer not found and prompt clearly requires linking: fail cleanly with structured reason
+- POST `/v2/project` 
+- Verify via GET `/v2/project/{id}`
+- TODO: confirm exact Tripletex project body fields (`projectManagerId` may be required — need fallback)
 
-## Proposed Improvements
+**3. New executor: `supabase/functions/_shared/executors/travel-expense-executor.ts`**
+- Handles `travel_expense_delete` task type
+- Extract identifiers: id, employee name, date, amount, description
+- Search strategy: GET `/v2/travelExpense` with narrowest possible filters (employee name, date range)
+- If exactly one result: DELETE `/v2/travelExpense/{id}`
+- If zero or multiple results: fail cleanly with structured ambiguity info
+- No broad deletions ever
 
-Rather than rebuilding what exists, I propose strengthening the current system to match all requirements in your prompt:
+**4. Update `supabase/functions/_shared/task-router.ts`**
+- Import new executors
+- Add `product_create`, `project_create`, `travel_expense_delete` to EXECUTOR_MAP
 
-### 1. First Working Vertical Slice: "Create Customer"
-- Harden `task-parser.ts` to reliably extract customer fields (name, email, org number, etc.)
-- Harden `task-planner.ts` to generate correct Tripletex `/v2/customer` POST endpoint and body
-- Harden `task-executor.ts` to execute the call and store the returned customer ID
-- Harden `task-verifier.ts` to GET `/v2/customer/{id}` and confirm creation
-- Test end-to-end with mock mode
+**5. Update `supabase/functions/_shared/heuristics.ts`**
+- Already has PRODUCT_KEYWORDS, PROJECT_KEYWORDS, TRAVEL_KEYWORDS — no changes needed (already wired)
 
-### 2. Add Base64 File Upload to Test UI
-- Add file upload control to `SolveTestPanel.tsx`
-- Convert files to base64 with filename and mime_type
-- Send as `attachments` array in the request body
+**6. Update `supabase/functions/_shared/field-validation.ts`**
+- Add `validateProductFields(fields)` — requires `name`
+- Add `validateProjectFields(fields)` — requires `name`
+- Add `validateTravelExpenseDeleteFields(fields)` — requires at least one identifier
 
-### 3. Add Executor Routing by Task Type
-- Create a task-type routing map in the executor so each resource type (customer, employee, invoice, etc.) has dedicated endpoint mappings and field schemas
-- Add TODO markers for unimplemented task families
+**7. Update `src/lib/sample-prompts.ts`**
+- Add Norwegian product creation, English project creation with customer, German product creation, Spanish travel expense deletion, Portuguese project creation, French travel expense deletion
 
-### 4. Add `/health` Endpoint
-- Create `supabase/functions/health/index.ts` returning `{"status":"ok"}`
+**8. Update `supabase/functions/_shared/mock-data.ts`**
+- Add mock results for product_create, project_create, travel_expense_delete
 
-### 5. Improve Request Schema
-- Update types to match the competition schema: `prompt`, `files` (with `filename`, `content_base64`, `mime_type`), `tripletex_credentials` (`base_url`, `session_token`)
-- Add backward compatibility with existing field names
+### Technical details
 
-### 6. Add Realistic Stubs
-- Add stub executors for: employee, customer, product, invoice, travel expense, project, correction
-- Each with correct Tripletex API endpoint mappings and required field schemas
+- All executors follow the same pattern as customer-executor: normalize fields → validate → build body → execute → verify → return ExecutorResult
+- The travel expense delete executor uses a search-then-delete pattern with strict uniqueness check
+- Project executor conditionally searches for customer only when the prompt references one
+- Debug output already works via `x-debug: true` header — new executors automatically included in pipeline response
 
-### 7. Update README
-- Setup instructions, environment variables, how to test `/solve`, deployment info
-
-## Technical Details
-
-All backend code lives in `supabase/functions/`. The edge function is deployed automatically and is HTTPS-ready. The Tripletex client, LLM-powered parser, and pipeline orchestration are already functional. The main gap is hardening the vertical slices and adding file upload support.
+### What remains after this iteration
+- `invoice_create` (complex: requires customer + product references, line items)
+- `department_create` (simpler but lower priority)
+- `payment_create` (requires invoice reference)
+- `travel_expense_create` (needs employee lookup + date/amount)
+- Employee role assignment via entitlements API
+- VAT type lookup for products
 
