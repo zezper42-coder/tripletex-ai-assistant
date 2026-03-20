@@ -1,4 +1,4 @@
-// Hardened agent pipeline with deterministic routing, heuristics, and structured debug output
+// Hardened agent pipeline with deterministic routing, heuristics, swarm fallback, and structured debug output
 
 import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
@@ -10,6 +10,7 @@ import { processAttachments } from "./attachment-handler.ts";
 import { getMockResult } from "./mock-data.ts";
 import { runHeuristics } from "./heuristics.ts";
 import { resolveTaskType, getExecutor } from "./task-router.ts";
+import { runSwarmFallback } from "./agent-swarm.ts";
 import { SolveRequest, PipelineResult } from "./types.ts";
 
 export async function runPipeline(
@@ -57,7 +58,7 @@ export async function runPipeline(
       logger.info(`Confidence adjusted: ${parsed.confidence} (boost: +${heuristics.confidenceBoost})`);
     }
 
-    // Cross-validate heuristics vs LLM — trust heuristics when signals are strong
+    // Cross-validate heuristics vs LLM
     if (heuristics.likelyResource && heuristics.likelyResource !== parsed.resourceType) {
       const heuristicSignalCount = heuristics.signals.length;
       logger.warn("Heuristic/LLM resource mismatch", {
@@ -67,15 +68,12 @@ export async function runPipeline(
         heuristicSignalCount,
       });
 
-      // If heuristics have 3+ signals AND the LLM confidence is not very high,
-      // override LLM with heuristic. This prevents misclassification.
       if (heuristicSignalCount >= 3 && parsed.confidence < 0.95) {
         logger.info(`Overriding LLM resourceType "${parsed.resourceType}" → heuristic "${heuristics.likelyResource}"`, {
           reason: "Strong heuristic signals outweigh moderate LLM confidence",
         });
         parsed.resourceType = heuristics.likelyResource as any;
       }
-      // Also override intent if heuristics detected it
       if (heuristics.likelyAction && heuristics.likelyAction !== parsed.intent) {
         parsed.intent = heuristics.likelyAction as any;
       }
@@ -86,26 +84,48 @@ export async function runPipeline(
     logger.info(`Task type resolved: ${taskType}`);
 
     const executor = getExecutor(taskType);
+    const client = new TripletexClient(
+      { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
+      logger.child("tripletex")
+    );
 
     if (executor) {
       // Deterministic path — use dedicated executor
       logger.info(`Using dedicated executor for ${taskType}`);
-      const client = new TripletexClient(
-        { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
-        logger.child("tripletex")
-      );
 
       const executorResult = await executor(parsed, client, logger);
-
       const allSucceeded = executorResult.stepResults.every((r) => r.success);
 
+      if (allSucceeded) {
+        return {
+          status: "completed",
+          language: parsed.language,
+          parsedTask: parsed,
+          executionPlan: executorResult.plan,
+          stepResults: executorResult.stepResults,
+          verificationPassed: executorResult.verified,
+          logs: logger.getEntries(),
+          duration: Date.now() - start,
+        };
+      }
+
+      // Executor failed — activate Agent Swarm
+      logger.warn(`Dedicated executor failed for ${taskType}, activating Agent Swarm`);
+      const failError = executorResult.stepResults
+        .filter(r => !r.success)
+        .map(r => `Step ${r.stepNumber}: HTTP ${r.statusCode} — ${r.error || JSON.stringify(r.data).substring(0, 500)}`)
+        .join("\n");
+
+      const swarmResult = await runSwarmFallback(parsed, failError, executorResult.stepResults, client, logger);
+      const swarmSuccess = swarmResult.stepResults.every(r => r.success);
+
       return {
-        status: allSucceeded ? "completed" : "failed",
+        status: swarmSuccess ? "completed" : "failed",
         language: parsed.language,
         parsedTask: parsed,
-        executionPlan: executorResult.plan,
-        stepResults: executorResult.stepResults,
-        verificationPassed: executorResult.verified,
+        executionPlan: swarmResult.plan,
+        stepResults: swarmResult.stepResults,
+        verificationPassed: swarmResult.verified,
         logs: logger.getEntries(),
         duration: Date.now() - start,
       };
@@ -115,24 +135,39 @@ export async function runPipeline(
     logger.warn(`No dedicated executor for ${taskType}, falling back to LLM planner`);
 
     const plan = await planExecution(parsed, apiKey, logger);
-
-    const client = new TripletexClient(
-      { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
-      logger.child("tripletex")
-    );
     const stepResults = await executeplan(plan, client, logger);
-
     const allSucceeded = stepResults.every((r) => r.success);
-    // Skip verification GET calls — 2xx with ID is sufficient. Saves 1-3 API calls per task.
-    const verified = allSucceeded;
+
+    if (allSucceeded) {
+      return {
+        status: "completed",
+        language: parsed.language,
+        parsedTask: parsed,
+        executionPlan: plan,
+        stepResults,
+        verificationPassed: true,
+        logs: logger.getEntries(),
+        duration: Date.now() - start,
+      };
+    }
+
+    // LLM planner failed — activate Agent Swarm as last resort
+    logger.warn("LLM planner execution failed, activating Agent Swarm as last resort");
+    const plannerError = stepResults
+      .filter(r => !r.success)
+      .map(r => `Step ${r.stepNumber}: HTTP ${r.statusCode} — ${r.error || JSON.stringify(r.data).substring(0, 500)}`)
+      .join("\n");
+
+    const swarmResult = await runSwarmFallback(parsed, plannerError, stepResults, client, logger);
+    const swarmSuccess = swarmResult.stepResults.every(r => r.success);
 
     return {
-      status: allSucceeded ? "completed" : "failed",
+      status: swarmSuccess ? "completed" : "failed",
       language: parsed.language,
       parsedTask: parsed,
-      executionPlan: plan,
-      stepResults,
-      verificationPassed: verified,
+      executionPlan: swarmResult.plan,
+      stepResults: swarmResult.stepResults,
+      verificationPassed: swarmResult.verified,
       logs: logger.getEntries(),
       duration: Date.now() - start,
     };
