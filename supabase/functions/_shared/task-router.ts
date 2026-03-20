@@ -9,6 +9,7 @@ import { executeProductCreate } from "./executors/product-executor.ts";
 import { executeProjectCreate } from "./executors/project-executor.ts";
 import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
+import { executePaymentCreate } from "./executors/payment-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -41,9 +42,9 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
   invoice_create: executeInvoiceCreate,
+  payment_create: executePaymentCreate,
   // TODO: department_create
   // TODO: travel_expense_create
-  // TODO: payment_create
 };
 
 export function resolveTaskType(intent: string, resourceType: string): TaskType {
