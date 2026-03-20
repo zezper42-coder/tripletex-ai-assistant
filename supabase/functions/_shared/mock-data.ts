@@ -23,12 +23,15 @@ export function getMockResult(taskPrompt: string): PipelineResult {
     .some((kw) => lower.includes(kw));
   const isProject = ["prosjekt", "project", "proyecto", "projekt", "projet", "projeto"]
     .some((kw) => lower.includes(kw));
-  const isTravelDelete = ["slett", "delete", "eliminar", "supprimer", "excluir", "fjern", "remove"]
-    .some((kw) => lower.includes(kw)) &&
-    ["reiseregning", "travel expense", "gasto de viaje", "frais de voyage", "despesa de viagem", "reiseutgift"]
-      .some((kw) => lower.includes(kw));
+  const isTravelKeyword = ["reiseregning", "travel expense", "gasto de viaje", "frais de voyage", "despesa de viagem", "reiseutgift", "reise", "travel", "viaje", "voyage", "viagem"]
+    .some((kw) => lower.includes(kw));
+  const isDelete = ["slett", "delete", "eliminar", "supprimer", "excluir", "fjern", "remove"]
+    .some((kw) => lower.includes(kw));
+  const isCreate = ["opprett", "create", "erstellen", "crear", "créer", "criar", "registrer", "ny ", "new ", "neue"]
+    .some((kw) => lower.includes(kw));
 
-  if (isTravelDelete) return buildMockTravelExpenseDelete();
+  if (isTravelKeyword && isDelete) return buildMockTravelExpenseDelete();
+  if (isTravelKeyword && isCreate) return buildMockTravelExpenseCreate();
   if (isPayment) return buildMockPayment();
   if (isInvoice) return buildMockInvoice();
   const isDepartment = ["avdeling", "department", "abteilung", "departamento", "département"]
