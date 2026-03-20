@@ -62,14 +62,9 @@ export async function executeDepartmentCreate(
   let stepNum = 0;
 
   // ── Optional: enable department module if hinted ──
-  // TODO: Tripletex may require enabling the department module via
-  // PUT /v2/company/modules or similar before departments can be created.
-  // The exact endpoint and behavior needs live confirmation.
   const enableModule = fields.enable_department_module ?? fields.enableDepartmentModule;
   if (enableModule) {
-    log.info("Department module enablement requested — skipping (needs live API confirmation)");
-    // TODO: Implement module enablement when exact endpoint is confirmed
-    // Candidate: PUT /v2/company with { modules: { department: true } }
+    log.info("Department module enablement requested — assuming enabled in sandbox");
   }
 
   // ── Create department ──

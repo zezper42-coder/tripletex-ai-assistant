@@ -30,7 +30,8 @@ export async function verifyExecution(
     const id = extractIdFromResult(stepResult.data);
     if (id && step.method !== "DELETE") {
       try {
-        const verifyResponse = await client.get(`${step.endpoint}/${id}`);
+        const verifyEndpoint = step.endpoint.includes(String(id)) ? step.endpoint : `${step.endpoint}/${id}`;
+        const verifyResponse = await client.get(verifyEndpoint);
         if (verifyResponse.status === 200) {
           logger.info(`Verified step ${step.stepNumber}: resource ${id} exists`);
         } else {
@@ -43,7 +44,8 @@ export async function verifyExecution(
       }
     } else if (step.method === "DELETE" && id) {
       try {
-        const verifyResponse = await client.get(`${step.endpoint}/${id}`);
+        const verifyEndpoint = step.endpoint.includes(String(id)) ? step.endpoint : `${step.endpoint}/${id}`;
+        const verifyResponse = await client.get(verifyEndpoint);
         if (verifyResponse.status === 404) {
           logger.info(`Verified step ${step.stepNumber}: resource ${id} deleted`);
         } else {

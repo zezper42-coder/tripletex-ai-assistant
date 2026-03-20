@@ -180,10 +180,6 @@ export async function executeTravelExpenseCreate(
   }
 
   // ── Step 2: Create travel expense ──
-  // TODO: Confirm exact Tripletex travelExpense body shape.
-  // The payload below is a best-effort minimal body. Fields like
-  // `rateCategoryType`, `perDiemCompensation`, `isCompleted`, `travelDetails`
-  // may be required or have different names in the live API.
   const title = purpose || description || "Travel expense";
   const body: Record<string, unknown> = {
     employee: { id: resolvedEmployeeId },
@@ -193,8 +189,6 @@ export async function executeTravelExpenseCreate(
     ...(fromLocation && { departure: fromLocation.trim() }),
     ...(toLocation && { destination: toLocation.trim() }),
     ...(description && { description: description.trim() }),
-    // TODO: amount handling — Tripletex travel expenses may use cost line items
-    // rather than a top-level amount field. If so, create a cost line after expense creation.
   };
 
   stepNum++;
@@ -230,11 +224,32 @@ export async function executeTravelExpenseCreate(
   log.info(`Travel expense created, ID: ${expenseId}`);
 
   // ── Optional: Add cost line if amount is provided ──
-  // TODO: Tripletex may require adding costs via POST /v2/travelExpense/cost
-  // after the travel expense is created. This needs live confirmation.
   if (amount !== undefined && expenseId) {
-    log.info(`Amount ${amount} provided — cost line creation pending live API confirmation`);
-    // TODO: POST /v2/travelExpense/{id}/cost with { amount, currency, description }
+    log.info(`Amount ${amount} provided — creating cost line`);
+    const costBody = {
+      travelExpense: { id: expenseId },
+      amount: Number(amount),
+      currency: currency ? { code: currency } : undefined,
+      description: title.trim()
+    };
+    
+    stepNum++;
+    steps.push({
+      stepNumber: stepNum,
+      description: `POST /v2/travelExpense/cost — add amount ${amount}`,
+      method: "POST",
+      endpoint: "/v2/travelExpense/cost",
+      body: costBody,
+    });
+    
+    const costRes = await client.post("/v2/travelExpense/cost", costBody);
+    stepResults.push({
+      stepNumber: stepNum,
+      success: costRes.status >= 200 && costRes.status < 300,
+      statusCode: costRes.status,
+      data: costRes.data,
+      duration: 0,
+    });
   }
 
   return {

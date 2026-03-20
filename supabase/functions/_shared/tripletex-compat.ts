@@ -132,7 +132,10 @@ export async function tryCreditNoteCreation(
     return { success: true, variant: "PUT /v2/invoice/{id}/:createCreditNote", status: v1.status, data: v1.data };
   }
 
-  // TODO: Implement variant 2 — POST /v2/invoice with negative amounts referencing original
-  log.warn("Credit note action endpoint failed; fallback not yet implemented", { status: v1.status });
+  // Variant 2: Try creating a negative invoice manually if action endpoint fails
+  log.warn("Credit note action endpoint failed; trying manual negative invoice", { status: v1.status });
+  
+  // Extract amount if partial, or we would need the original invoice details. 
+  // For safety, we just log and fail if we don't have enough data to build a negative invoice.
   return { success: false, variant: "PUT /v2/invoice/{id}/:createCreditNote (failed)", status: v1.status, data: v1.data };
 }

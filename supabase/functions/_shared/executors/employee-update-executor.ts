@@ -66,8 +66,12 @@ export async function executeEmployeeUpdate(
   const current = ((getRes.data as any)?.value ?? getRes.data) as Record<string, unknown>;
   const version = current.version as number | undefined;
 
-  // Build update body
-  const updateBody: Record<string, unknown> = { ...current };
+  // Build update body with minimal required fields to avoid 422
+  const updateBody: Record<string, unknown> = {
+    id: employeeId,
+    firstName: current.firstName,
+    lastName: current.lastName,
+  };
   const newEmail = (f.newEmail ?? f.email ?? f.epost) as string | undefined;
   const newPhone = (f.phoneNumberMobile ?? f.phone ?? f.telefon ?? f.mobil ?? f.newPhone) as string | undefined;
   const newFirstName = (f.firstName ?? f.fornavn ?? f.newFirstName) as string | undefined;

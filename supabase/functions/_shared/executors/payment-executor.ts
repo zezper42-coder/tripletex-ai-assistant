@@ -125,7 +125,6 @@ export async function executePaymentCreate(
     const searchParams: Record<string, string> = {};
     if (pf.invoiceNumber) searchParams.invoiceNumber = pf.invoiceNumber;
     if (pf.customerName) searchParams.customerName = pf.customerName;
-    // TODO: confirm exact query param names for Tripletex /v2/invoice search
 
     const searchDesc = pf.invoiceNumber
       ? `search by number "${pf.invoiceNumber}"`
@@ -227,19 +226,14 @@ export async function executePaymentCreate(
   // ── Step 2: Create payment ──
 
   stepNum++;
-  // TODO: confirm exact Tripletex payment endpoint and required body fields
-  // Tripletex may use POST /v2/payment or a payment-type-specific endpoint
+  
   const paymentBody: Record<string, unknown> = {
     paymentDate: pf.paymentDate,
     amount: resolvedAmount ?? 0,
-    // TODO: Tripletex may require paymentType or account references
+    invoice: { id: invoiceId },
     ...(pf.paymentTypeId ? { paymentType: { id: pf.paymentTypeId } } : {}),
     ...(pf.currency ? { currency: { code: pf.currency } } : {}),
   };
-
-  // TODO: confirm if Tripletex links payment to invoice via voucher reference or direct invoiceId
-  // Trying the most common pattern first
-  paymentBody.voucher = { id: invoiceId };
 
   steps.push({
     stepNumber: stepNum,

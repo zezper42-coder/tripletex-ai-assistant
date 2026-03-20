@@ -62,8 +62,11 @@ export async function executeCustomerUpdate(
   const current = ((getRes.data as any)?.value ?? getRes.data) as Record<string, unknown>;
   const version = current.version as number | undefined;
 
-  // Build update body — merge new fields into current
-  const updateBody: Record<string, unknown> = { ...current };
+  // Build update body — merge new fields into current but only send minimum required to avoid 422
+  const updateBody: Record<string, unknown> = {
+    id: customerId,
+    name: current.name, // Required field
+  };
   const newEmail = (f.email ?? f.emailAddress ?? f.epost) as string | undefined;
   const newPhone = (f.phoneNumber ?? f.phone ?? f.telefon) as string | undefined;
   const newInvoiceEmail = (f.invoiceEmail ?? f.fakturaEpost) as string | undefined;

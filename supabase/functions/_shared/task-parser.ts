@@ -52,6 +52,9 @@ Field mapping:
 - Department number → "departmentNumber"
 - Project manager → "projectManager"
 - Account administrator → "isAccountAdministrator": true
+- Travel/payment date → "travelDate" or "paymentDate": "YYYY-MM-DD"
+- Travel purpose → "purpose"
+- Employee reference → "employeeName" or "employeeEmail"
 
 Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no)" →
 {"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS (org number 999888777, email a@b.no)","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","email":"a@b.no"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;

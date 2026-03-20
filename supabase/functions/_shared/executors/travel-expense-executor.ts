@@ -53,9 +53,9 @@ export async function executeTravelExpenseDelete(
     }
   }
   if (identifiers.date) {
-    // Use date as both from and to for exact day match
-    queryParams.departureDate = String(identifiers.date);
-    // TODO: confirm Tripletex search parameter names for travelExpense date filtering
+    // Use date for filtering
+    queryParams.dateFrom = String(identifiers.date);
+    queryParams.dateTo = String(identifiers.date);
   }
 
   steps.push({

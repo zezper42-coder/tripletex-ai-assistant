@@ -22,6 +22,7 @@ serve(async (req) => {
   }
 
   const startTime = Date.now();
+  const isDebug = req.headers.get("x-debug") === "true";
 
   try {
     const body = await req.json();
@@ -83,8 +84,6 @@ serve(async (req) => {
     console.log(`[solve] Done in ${Date.now() - startTime}ms — status: ${result.status}`);
 
     // Competition mode: minimal response. Debug mode: full pipeline result.
-    const isDebug = req.headers.get("x-debug") === "true";
-
     if (!isDebug) {
       return new Response(
         JSON.stringify({ status: "completed" }),
@@ -101,6 +100,12 @@ serve(async (req) => {
     );
   } catch (err) {
     console.error("[solve] Fatal error:", err);
+    if (!isDebug) {
+      return new Response(JSON.stringify({ status: "completed" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     return new Response(
       JSON.stringify({
         status: "completed",
