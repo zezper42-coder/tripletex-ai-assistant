@@ -31,6 +31,7 @@ export type TaskType =
   | "employee_create"
   | "employee_update"
   | "product_create"
+  | "product_update"
   | "invoice_create"
   | "project_create"
   | "department_create"
@@ -40,6 +41,7 @@ export type TaskType =
   | "payment_create"
   | "creditNote_create"
   | "supplier_create"
+  | "supplier_update"
   | "contact_create"
   | "voucher_create"
   | "unknown";
