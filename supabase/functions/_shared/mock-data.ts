@@ -225,7 +225,7 @@ function buildMockPayment(): PipelineResult {
 function buildMockTravelExpenseCreate(): PipelineResult {
   const parsed: ParsedTask = {
     language: "nb", normalizedPrompt: "Opprett reiseregning for Ola Nordmann",
-    intent: "create", resourceType: "travel_expense",
+    intent: "create", resourceType: "travelExpense",
     fields: { employeeName: "Ola Nordmann", travelDate: "2026-03-18", amount: 1250, description: "Tog og hotell", fromLocation: "Bergen", toLocation: "Oslo" },
     dependencies: [], confidence: 0.89, notes: "Mock mode — travel expense create path",
   };
