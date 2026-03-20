@@ -111,7 +111,7 @@ export async function runSwarmFallback(
       ).join("\n")}`
     : "No previous API calls were attempted.";
 
-  const plan = await generateSwarmPlan(parsed, previousError, failureContext, openaiKey, swarmLogger);
+  const plan = await generateSwarmPlan(parsed, previousError, failureContext, gatewayKey, swarmLogger);
   if (!plan) {
     return emptyResult("Swarm failed to generate a plan");
   }
