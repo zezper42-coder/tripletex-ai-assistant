@@ -58,7 +58,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   employee_create: executeEmployeeCreate,
   employee_update: executeEmployeeUpdate,
   product_create: executeProductCreate,
-  product_update: executeCustomerUpdate, // Generic GET+merge+PUT pattern works for products too via swarm
+  // product_update and supplier_update fall to swarm (different endpoint patterns)
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
   travel_expense_create: executeTravelExpenseCreate,
