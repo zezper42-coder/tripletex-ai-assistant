@@ -22,4 +22,11 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   es_invoice: "Crear una factura para el cliente Empresa SL por 2 servicios de consultoría a 500 EUR cada uno",
   en_invoice_multi: "Invoice Globex Corp for: 10x Widget A at $50, 5x Widget B at $75, 2x Premium Support at $200",
   nb_invoice_new_customer: "Lag faktura til ny kunde Fjordtech AS (post@fjordtech.no) for 20 timer rådgivning à 950 NOK",
+  // Payment creation
+  nb_payment: "Registrer betaling på faktura 10025 for Nordvik AS, 12500 NOK, betalt 20. mars 2026",
+  en_payment: "Mark invoice #10030 as paid, amount 750 USD, payment date 2026-03-20",
+  de_payment: "Zahlung für Rechnung 10042 registrieren, Betrag 2000 EUR, Kunde Schmidt GmbH",
+  es_payment: "Registrar pago de la factura del cliente Empresa SL por 500 EUR",
+  pt_payment: "Registrar pagamento da fatura 10050 no valor de 3000 BRL",
+  fr_payment: "Enregistrer le paiement de la facture #10055 de 1500 EUR pour le client Dupont SARL",
 };

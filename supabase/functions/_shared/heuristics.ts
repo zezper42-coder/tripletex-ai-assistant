@@ -83,6 +83,9 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   } else if (containsAny(prompt, INVOICE_KEYWORDS)) {
     likelyResource = "invoice";
     signals.push("invoice_keyword");
+  } else if (containsAny(prompt, PAYMENT_KEYWORDS)) {
+    likelyResource = "payment";
+    signals.push("payment_keyword");
   } else if (containsAny(prompt, PROJECT_KEYWORDS)) {
     likelyResource = "project";
     signals.push("project_keyword");
