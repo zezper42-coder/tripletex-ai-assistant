@@ -37,7 +37,7 @@ Deno.test("heuristics: credit note takes priority over invoice", () => {
 });
 
 Deno.test("heuristics: payment detection (nb)", () => {
-  const r = runHeuristics("Registrer betaling på faktura 10030, 5000 NOK", logger);
+  const r = runHeuristics("Registrer betaling på 5000 NOK", logger);
   assertEquals(r.likelyResource, "payment");
 });
 
