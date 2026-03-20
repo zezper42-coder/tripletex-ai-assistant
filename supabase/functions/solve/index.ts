@@ -5,7 +5,7 @@ import { SolveRequest } from "../_shared/types.ts";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-debug, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -25,8 +25,25 @@ serve(async (req) => {
   try {
     const body = await req.json();
 
-    // Validate required fields
-    const { task, tripletexApiUrl, sessionToken, mockMode, attachments } = body;
+    // Support both competition schema and internal schema
+    const task = body.task || body.prompt || "";
+    const tripletexApiUrl =
+      body.tripletexApiUrl ||
+      body.tripletex_credentials?.base_url ||
+      "";
+    const sessionToken =
+      body.sessionToken ||
+      body.tripletex_credentials?.session_token ||
+      "";
+    const mockMode = body.mockMode ?? false;
+
+    // Normalize attachments from either format
+    const attachments = body.attachments || (body.files || []).map((f: any) => ({
+      filename: f.filename,
+      mimeType: f.mime_type || f.mimeType,
+      base64: f.content_base64 || f.base64,
+      url: f.url,
+    }));
 
     if (!task || typeof task !== "string") {
       return new Response(
@@ -37,7 +54,7 @@ serve(async (req) => {
 
     if (!mockMode && (!tripletexApiUrl || !sessionToken)) {
       return new Response(
-        JSON.stringify({ error: "Missing 'tripletexApiUrl' or 'sessionToken'" }),
+        JSON.stringify({ error: "Missing Tripletex credentials (tripletexApiUrl/sessionToken or tripletex_credentials)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -47,7 +64,7 @@ serve(async (req) => {
       tripletexApiUrl: tripletexApiUrl || "https://api.tripletex.io",
       sessionToken: sessionToken || "",
       mockMode: !!mockMode,
-      attachments: attachments || [],
+      attachments,
     };
 
     const apiKey = Deno.env.get("LOVABLE_API_KEY");
@@ -58,24 +75,22 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[solve] Starting task processing (mock=${solveRequest.mockMode})`);
+    console.log(`[solve] Starting (mock=${solveRequest.mockMode}, attachments=${attachments.length})`);
 
     const result = await runPipeline(solveRequest, apiKey);
 
-    console.log(`[solve] Completed in ${Date.now() - startTime}ms — status: ${result.status}`);
+    console.log(`[solve] Done in ${Date.now() - startTime}ms — status: ${result.status}`);
 
-    // The competition expects {"status":"completed"}
-    // But we also return full debug info for our test UI
-    const isCompetition = req.headers.get("x-debug") !== "true";
+    // Competition mode: minimal response. Debug mode: full pipeline result.
+    const isDebug = req.headers.get("x-debug") === "true";
 
-    if (isCompetition) {
+    if (!isDebug) {
       return new Response(
         JSON.stringify({ status: result.status }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Debug mode: return full pipeline result
     return new Response(
       JSON.stringify(result),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
