@@ -44,6 +44,8 @@ const PROJECT_KEYWORDS = ["project", "prosjekt", "proyecto", "Projekt", "projet"
 const DEPARTMENT_KEYWORDS = ["department", "avdeling", "departamento", "Abteilung", "département"];
 const CREDIT_NOTE_KEYWORDS = ["credit note", "kreditnota", "kreditering", "krediter", "Gutschrift", "nota de crédito", "note de crédit", "nota di credito", "credit invoice", "reverse invoice", "reverser faktura"];
 const TRAVEL_KEYWORDS = ["travel expense", "reiseregning", "reiseutgift", "gasto de viaje", "Reisekosten", "frais de voyage", "despesa de viagem"];
+const SUPPLIER_KEYWORDS = ["supplier", "leverandør", "proveedor", "Lieferant", "fournisseur", "fornecedor"];
+const CONTACT_KEYWORDS = ["contact", "kontakt", "kontaktperson", "contacto", "Kontakt", "personne de contact"];
 
 function containsAny(text: string, keywords: string[]): boolean {
   const lower = text.toLowerCase();
