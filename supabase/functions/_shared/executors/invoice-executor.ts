@@ -38,7 +38,7 @@ interface ValidationError {
 function validateInvoiceFields(fields: Record<string, unknown>): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  const customerName = fields.customerName ?? fields.customer_name ?? fields.customer;
+  const customerName = fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn;
   if (!customerName || (typeof customerName === "string" && !customerName.trim())) {
     errors.push({ field: "customerName", message: "Customer name or reference is required" });
   }
@@ -98,7 +98,7 @@ function normalizeFields(fields: Record<string, unknown>): InvoiceFields {
   }));
 
   return {
-    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? ""),
+    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn ?? ""),
     customerEmail: (fields.customerEmail ?? fields.customer_email) as string | undefined,
     customerPhone: (fields.customerPhone ?? fields.customer_phone ?? fields.phoneNumber) as string | undefined,
     customerOrgNr: (fields.customerOrgNr ?? fields.organizationNumber) as string | undefined,

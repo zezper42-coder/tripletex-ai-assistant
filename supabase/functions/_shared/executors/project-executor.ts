@@ -85,9 +85,34 @@ export async function executeProjectCreate(
     }
   }
 
+  // Tripletex requires projectManager — look up first employee
+  let projectManagerId: number | undefined;
+  const pmField = (f.projectManager ?? f.prosjektleder ?? f.projectManagerId) as string | number | undefined;
+  if (pmField && typeof pmField === "number") {
+    projectManagerId = pmField;
+  } else if (pmField && typeof pmField === "string") {
+    // Search for employee by name
+    const empSearch = await client.get("/v2/employee", { firstName: pmField.split(" ")[0], count: "1", fields: "id" });
+    if (empSearch.status === 200) {
+      const vals = extractListValues(empSearch.data);
+      if (vals.length > 0) projectManagerId = vals[0].id as number;
+    }
+  }
+  if (!projectManagerId) {
+    // Fall back to first available employee
+    const empList = await client.get("/v2/employee", { count: "1", fields: "id" });
+    if (empList.status === 200) {
+      const vals = extractListValues(empList.data);
+      if (vals.length > 0) projectManagerId = vals[0].id as number;
+    }
+  }
+  if (projectManagerId) {
+    log.info(`Using project manager employee ID ${projectManagerId}`);
+  }
+
   const body: Record<string, unknown> = {
     name: normalizedFields.name,
-    // TODO: projectManagerId may be required — Tripletex might reject without it
+    ...(projectManagerId && { projectManager: { id: projectManagerId } }),
   };
   if (normalizedFields.number) body.number = normalizedFields.number;
   if (normalizedFields.description) body.description = normalizedFields.description;
