@@ -64,14 +64,14 @@ async function generateTask(
     .replace("{intent}", intent)
     .replace("{language}", language);
 
-  const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-5.4",
+      model: "openai/gpt-5",
       messages: [
         { role: "system", content: prompt },
         { role: "user", content: `Generate a ${intent} task for ${resourceType} in ${language}.` },
