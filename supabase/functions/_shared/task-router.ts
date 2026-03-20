@@ -10,6 +10,7 @@ import { executeProjectCreate } from "./executors/project-executor.ts";
 import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
+import { executeDepartmentCreate } from "./executors/department-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -43,7 +44,8 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   travel_expense_delete: executeTravelExpenseDelete,
   invoice_create: executeInvoiceCreate,
   payment_create: executePaymentCreate,
-  // TODO: department_create
+  department_create: executeDepartmentCreate,
+  // TODO: travel_expense_create
   // TODO: travel_expense_create
 };
 

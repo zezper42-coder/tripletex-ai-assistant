@@ -29,4 +29,11 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   es_payment: "Registrar pago de la factura del cliente Empresa SL por 500 EUR",
   pt_payment: "Registrar pagamento da fatura 10050 no valor de 3000 BRL",
   fr_payment: "Enregistrer le paiement de la facture #10055 de 1500 EUR pour le client Dupont SARL",
+  // Department creation
+  nb_department: "Opprett en ny avdeling med navn Salg og avdelingsnummer 10",
+  en_department: "Create a new department called Marketing with department number 20",
+  de_department: "Erstellen Sie eine neue Abteilung namens Buchhaltung mit Nummer 30",
+  es_department: "Crear un nuevo departamento llamado Ventas con número 10",
+  pt_department: "Criar um novo departamento chamado Financeiro com número 40",
+  fr_department: "Créer un nouveau département nommé Ressources Humaines avec le numéro 50",
 };

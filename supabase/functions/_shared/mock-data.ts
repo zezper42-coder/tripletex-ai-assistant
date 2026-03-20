@@ -31,6 +31,9 @@ export function getMockResult(taskPrompt: string): PipelineResult {
   if (isTravelDelete) return buildMockTravelExpenseDelete();
   if (isPayment) return buildMockPayment();
   if (isInvoice) return buildMockInvoice();
+  const isDepartment = ["avdeling", "department", "abteilung", "departamento", "département"]
+    .some((kw) => lower.includes(kw));
+  if (isDepartment) return buildMockDepartment();
   if (isEmployee) return buildMockEmployee();
   if (isProduct) return buildMockProduct();
   if (isProject) return buildMockProject();
@@ -210,5 +213,23 @@ function buildMockPayment(): PipelineResult {
       { stepNumber: 2, success: true, statusCode: 201, data: { value: { id: 90020 } }, duration: 35 },
     ],
     verificationPassed: true, logs: [], duration: 150,
+  };
+}
+
+function buildMockDepartment(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create department Marketing",
+    intent: "create", resourceType: "department",
+    fields: { name: "Marketing", departmentNumber: "20" },
+    dependencies: [], confidence: 0.91, notes: "Mock mode — department executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: {
+      summary: 'Department created: "Marketing", ID: 90030',
+      steps: [{ stepNumber: 1, description: 'POST /v2/department — create "Marketing"', method: "POST", endpoint: "/v2/department", body: { name: "Marketing", departmentNumber: "20" }, resultKey: "departmentId" }],
+    },
+    stepResults: [{ stepNumber: 1, success: true, statusCode: 201, data: { value: { id: 90030, name: "Marketing" } }, duration: 32 }],
+    verificationPassed: true, logs: [], duration: 110,
   };
 }
