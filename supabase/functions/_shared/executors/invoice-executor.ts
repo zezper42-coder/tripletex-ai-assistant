@@ -248,16 +248,31 @@ export async function executeInvoiceCreate(
 
   // ── Step 2: Create order (Tripletex requires order before invoice) ──
 
-  stepNum++;
-  const orderLines = inv.lineItems.map((li) => ({
-    description: li.description,
-    count: li.quantity,
-    unitCostCurrency: li.unitPrice,
-    unitPriceExcludingVatCurrency: li.unitPrice,
-    // TODO: vatType may be required — add VAT lookup if needed
-    ...(li.vatTypeId ? { vatType: { id: li.vatTypeId } } : {}),
-    ...(li.productId ? { product: { id: li.productId } } : {}),
-  }));
+  // ── Step 2: Resolve VAT for order lines if needed ──
+
+  const vatLookup = new VatTypeLookup(client, logger);
+  const orderLines = [];
+  for (const li of inv.lineItems) {
+    const line: Record<string, unknown> = {
+      description: li.description,
+      count: li.quantity,
+      unitCostCurrency: li.unitPrice,
+      unitPriceExcludingVatCurrency: li.unitPrice,
+    };
+    if (li.vatTypeId) {
+      line.vatType = { id: li.vatTypeId };
+    } else {
+      // Try resolving standard VAT (25%) as safe default for Norwegian accounting
+      const stdVat = await vatLookup.getStandardVat();
+      if (stdVat) {
+        line.vatType = { id: stdVat.id };
+        log.info("Applied standard VAT to line", { description: li.description, vatId: stdVat.id });
+      }
+      // If no VAT resolved, omit — may cause 4xx on strict configs
+    }
+    if (li.productId) line.product = { id: li.productId };
+    orderLines.push(line);
+  }
 
   const orderBody: Record<string, unknown> = {
     customer: { id: customerId },
