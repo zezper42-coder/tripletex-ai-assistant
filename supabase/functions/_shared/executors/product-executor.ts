@@ -52,13 +52,11 @@ export async function executeProductCreate(
 
   const body: Record<string, unknown> = {
     name: normalizedFields.name,
-    ...(normalizedFields.number && { number: normalizedFields.number }),
-    ...(normalizedFields.priceExcludingVatCurrency !== undefined && {
-      priceExcludingVatCurrency: normalizedFields.priceExcludingVatCurrency,
-    }),
-    ...(normalizedFields.description && { description: normalizedFields.description }),
-    ...(normalizedFields.vatType && { vatType: normalizedFields.vatType }),
   };
+  if (normalizedFields.number) body.number = normalizedFields.number;
+  if (normalizedFields.priceExcludingVatCurrency !== undefined) body.priceExcludingVatCurrency = normalizedFields.priceExcludingVatCurrency;
+  if (normalizedFields.description) body.description = normalizedFields.description;
+  if (normalizedFields.vatType) body.vatType = normalizedFields.vatType;
 
   const plan: ExecutionPlan = {
     summary: `Create product: ${normalizedFields.name}`,

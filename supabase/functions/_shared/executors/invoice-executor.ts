@@ -181,7 +181,7 @@ export async function executeInvoiceCreate(
   // Try to extract customer from search results
   if (searchRes.status === 200 && searchRes.data) {
     const d = searchRes.data as Record<string, unknown>;
-    const values = (d.values ?? d.fullResultSet?.values) as Record<string, unknown>[] | undefined;
+    const values = ((d as Record<string, unknown>).values ?? ((d as Record<string, unknown>).fullResultSet as Record<string, unknown> | undefined)?.values) as Record<string, unknown>[] | undefined;
     if (values && values.length > 0) {
       // Prefer exact name match
       const exact = values.find(

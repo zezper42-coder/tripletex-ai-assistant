@@ -88,10 +88,10 @@ export async function executeProjectCreate(
   const body: Record<string, unknown> = {
     name: normalizedFields.name,
     // TODO: projectManagerId may be required — Tripletex might reject without it
-    ...(normalizedFields.number && { number: normalizedFields.number }),
-    ...(normalizedFields.description && { description: normalizedFields.description }),
-    ...(customerId && { customer: { id: customerId } }),
   };
+  if (normalizedFields.number) body.number = normalizedFields.number;
+  if (normalizedFields.description) body.description = normalizedFields.description;
+  if (customerId) body.customer = { id: customerId };
 
   const createStepNumber = customerRef ? 2 : 1;
   steps.push({
