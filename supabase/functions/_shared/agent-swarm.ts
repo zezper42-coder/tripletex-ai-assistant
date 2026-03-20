@@ -211,7 +211,7 @@ Return ONLY the JSON object.`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.1,
+        
       }),
     });
 

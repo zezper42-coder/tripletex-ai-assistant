@@ -172,7 +172,7 @@ async function generateTask(
           },
         ],
         tool_choice: { type: "function", function: { name: "emit_task" } },
-        temperature: 0.8,
+        
         max_completion_tokens: 500,
       }),
     });
