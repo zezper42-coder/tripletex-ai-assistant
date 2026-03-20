@@ -50,4 +50,12 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   es_credit_note: "Crear una nota de crédito para la factura del cliente Empresa SL",
   pt_credit_note: "Criar nota de crédito para a fatura 10050, motivo: cobrança duplicada",
   fr_credit_note: "Créer une note de crédit pour la facture #10055 du client Dupont SARL",
+  // === Sandbox verification fixtures ===
+  sandbox_product_vat: "Opprett produkt 'Rådgivning Standard' med pris 2000 NOK og 25% MVA",
+  sandbox_invoice_vat: "Opprett faktura til kunde Testfirma AS for 3 timer rådgivning à 1500 NOK med 25% MVA",
+  sandbox_payment: "Registrer betaling på faktura 10001, beløp 4500 NOK, betalt i dag",
+  sandbox_credit_full: "Opprett kreditnota for faktura 10001",
+  sandbox_credit_partial: "Opprett kreditnota for faktura 10001, beløp 1500 NOK, grunn: delvis feil",
+  sandbox_department: "Opprett avdeling Regnskap med avdelingsnummer 30",
+  sandbox_travel: "Opprett reiseregning for Ola Nordmann, tog Bergen-Oslo, 18. mars 2026, 1250 NOK",
 };
