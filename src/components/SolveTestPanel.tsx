@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SAMPLE_PROMPTS } from "@/lib/sample-prompts";
+
+interface AttachmentFile {
+  filename: string;
+  mimeType: string;
+  base64: string;
+}
 
 interface PipelineResult {
   status: "completed" | "failed";
@@ -62,6 +68,34 @@ export default function SolveTestPanel() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<PipelineResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<AttachmentFile[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newAttachments: AttachmentFile[] = [];
+    for (const file of Array.from(files)) {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      newAttachments.push({
+        filename: file.name,
+        mimeType: file.type,
+        base64: btoa(binary),
+      });
+    }
+    setAttachments((prev) => [...prev, ...newAttachments]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const removeAttachment = (idx: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== idx));
+  };
 
   const runTask = useCallback(async () => {
     setLoading(true);
@@ -75,6 +109,7 @@ export default function SolveTestPanel() {
           tripletexApiUrl: apiUrl,
           sessionToken,
           mockMode,
+          attachments: attachments.length > 0 ? attachments : undefined,
         },
         headers: { "x-debug": "true" },
       });
@@ -86,7 +121,7 @@ export default function SolveTestPanel() {
     } finally {
       setLoading(false);
     }
-  }, [task, apiUrl, sessionToken, mockMode]);
+  }, [task, apiUrl, sessionToken, mockMode, attachments]);
 
   const loadSample = (lang: string) => {
     setTask(SAMPLE_PROMPTS[lang as keyof typeof SAMPLE_PROMPTS] || "");
@@ -95,7 +130,6 @@ export default function SolveTestPanel() {
   return (
     <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
       <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
         <div className="space-y-1">
           <h1 className="text-2xl font-bold tracking-tight">
             Tripletex AI Agent — Test Console
@@ -135,6 +169,33 @@ export default function SolveTestPanel() {
                       </Button>
                     ))}
                   </div>
+                </div>
+
+                {/* File Upload */}
+                <div className="space-y-2">
+                  <Label>Attachments (PDF/Image)</Label>
+                  <Input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.tiff"
+                    onChange={handleFileChange}
+                    className="text-sm"
+                  />
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {attachments.map((a, i) => (
+                        <Badge
+                          key={i}
+                          variant="secondary"
+                          className="text-xs cursor-pointer"
+                          onClick={() => removeAttachment(i)}
+                        >
+                          {a.filename} ✕
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 gap-3">
@@ -195,7 +256,6 @@ export default function SolveTestPanel() {
 
             {result && (
               <>
-                {/* Status bar */}
                 <div className="flex items-center gap-3">
                   <Badge
                     variant={result.status === "completed" ? "default" : "destructive"}
