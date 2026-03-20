@@ -73,6 +73,9 @@ IMPORTANT CONVENTIONS:
 - References use { id: N } format, e.g. customer: { id: 123 }
 - Dates are "YYYY-MM-DD" strings
 - Auth: Basic with username "0" and session_token as password
+- Customer address uses "postalAddress" NOT "address" (which doesn't exist)
+- Employee does NOT have dateOfEmployment or employmentDate fields
+- Order REQUIRES orderDate field (YYYY-MM-DD)
 `;
 
 export async function runSwarmFallback(
