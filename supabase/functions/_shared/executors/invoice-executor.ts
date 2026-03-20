@@ -218,7 +218,7 @@ export async function executeInvoiceCreate(
     steps.push(createStep);
 
     const createStart = Date.now();
-    const createRes = await client.post("/v2/customer", customerBody);
+    const createRes = await client.postWithRetry("/v2/customer", customerBody);
     const createDuration = Date.now() - createStart;
     const createSuccess = createRes.status >= 200 && createRes.status < 300;
 
@@ -294,7 +294,7 @@ export async function executeInvoiceCreate(
 
   log.info("Creating order", { customerId, lineCount: orderLines.length });
   const orderStart = Date.now();
-  const orderRes = await client.post("/v2/order", orderBody);
+  const orderRes = await client.postWithRetry("/v2/order", orderBody);
   const orderDuration = Date.now() - orderStart;
   const orderSuccess = orderRes.status >= 200 && orderRes.status < 300;
 

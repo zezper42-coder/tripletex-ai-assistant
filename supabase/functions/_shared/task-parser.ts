@@ -25,11 +25,26 @@ Respond with ONLY a JSON object (no markdown, no explanation) with these exact f
   "notes": "any assumptions"
 }
 
+TRIPLETEX API SCHEMA — Required and optional fields per resource:
+- Customer: REQUIRED "name". Optional: "email", "phoneNumber", "organizationNumber", "invoiceEmail". Flags: "isCustomer":true, "isSupplier":false.
+- Supplier: Same as Customer but with "isSupplier":true, "isCustomer":false. There is NO separate /v2/supplier endpoint.
+- Employee: REQUIRED "firstName", "lastName". Optional: "email", "phoneNumberMobile", "dateOfBirth", "dateOfEmployment". Admin role → set "isAccountAdministrator":true.
+- Product: REQUIRED "name". Optional: "number" (product code), "priceExcludingVatCurrency" (number), "description".
+- Project: REQUIRED "name", "startDate" (YYYY-MM-DD). Optional: "endDate", "number", "description". Needs "projectManager" (employee reference).
+- Department: REQUIRED "name", "departmentNumber" (numeric string).
+- Invoice: Requires customer + order with orderLines. Each line needs "description", "count", "unitPriceExcludingVatCurrency".
+- Order: REQUIRED "customer.id", "deliveryDate" (YYYY-MM-DD), "orderLines".
+- TravelExpense: REQUIRED "employee" reference, "title". Optional: "departureDate", "returnDate", "departure", "destination".
+- Voucher: REQUIRED "date", "description", "postings" array with debit/credit account IDs and amounts.
+- Payment: Needs invoice reference + "paymentDate" + "amount".
+- CreditNote: Needs invoice reference. Optional: "amount" for partial credit.
+
 CRITICAL RULES:
 1. The "fields" object MUST contain ALL data values from the task.
 2. If the task mentions creating a project FOR a customer, resourceType is "project" and include customer details in fields.
 3. If the task mentions creating an invoice FOR a customer, resourceType is "invoice" and include customer details in fields.
 4. Extract ALL entity details even if they belong to related entities.
+5. For suppliers, set resourceType to "supplier" — the executor handles the API mapping.
 
 Field mapping:
 - Customer/company name → "name" or "customerName"

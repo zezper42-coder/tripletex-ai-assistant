@@ -46,6 +46,8 @@ const CREDIT_NOTE_KEYWORDS = ["credit note", "kreditnota", "kreditering", "kredi
 const TRAVEL_KEYWORDS = ["travel expense", "reiseregning", "reiseutgift", "gasto de viaje", "Reisekosten", "frais de voyage", "despesa de viagem"];
 const SUPPLIER_KEYWORDS = ["supplier", "leverandør", "proveedor", "Lieferant", "fournisseur", "fornecedor"];
 const CONTACT_KEYWORDS = ["contact", "kontakt", "kontaktperson", "contacto", "Kontakt", "personne de contact"];
+const VOUCHER_KEYWORDS = ["voucher", "bilag", "journal entry", "Buchung", "comprobante", "asiento", "écriture"];
+const ORDER_KEYWORDS = ["order", "bestilling", "ordre", "pedido", "Bestellung", "commande"];
 
 function containsAny(text: string, keywords: string[]): boolean {
   const lower = text.toLowerCase();
@@ -121,6 +123,12 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   } else if (containsAny(prompt, CONTACT_KEYWORDS)) {
     likelyResource = "contact";
     signals.push("contact_keyword");
+  } else if (containsAny(prompt, VOUCHER_KEYWORDS)) {
+    likelyResource = "voucher";
+    signals.push("voucher_keyword");
+  } else if (containsAny(prompt, ORDER_KEYWORDS)) {
+    likelyResource = "order";
+    signals.push("order_keyword");
   }
 
   // Add general data signals (useful for conflict resolution weighting)

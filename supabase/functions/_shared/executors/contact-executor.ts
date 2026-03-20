@@ -68,7 +68,7 @@ export async function executeContactCreate(
 
   log.info("Creating contact", { body });
   const start = Date.now();
-  const response = await client.post("/v2/contact", body);
+  const response = await client.postWithRetry("/v2/contact", body as Record<string, unknown>);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

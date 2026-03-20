@@ -109,7 +109,7 @@ export async function executeProjectCreate(
       });
 
       const cStart = Date.now();
-      const createResp = await client.post("/v2/customer", customerBody);
+      const createResp = await client.postWithRetry("/v2/customer", customerBody);
       const cDuration = Date.now() - cStart;
       const cSuccess = createResp.status >= 200 && createResp.status < 300;
 
@@ -184,7 +184,7 @@ export async function executeProjectCreate(
 
   log.info("Executing project creation", { body });
   const start = Date.now();
-  const response = await client.post("/v2/project", body);
+  const response = await client.postWithRetry("/v2/project", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

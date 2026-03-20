@@ -203,7 +203,7 @@ export async function executeTravelExpenseCreate(
 
   log.info("Creating travel expense", { body });
   const createStart = Date.now();
-  const createRes = await client.post("/v2/travelExpense", body);
+  const createRes = await client.postWithRetry("/v2/travelExpense", body);
   const createDuration = Date.now() - createStart;
   const createSuccess = createRes.status >= 200 && createRes.status < 300;
 
@@ -223,34 +223,8 @@ export async function executeTravelExpenseCreate(
   const expenseId = extractId(createRes.data);
   log.info(`Travel expense created, ID: ${expenseId}`);
 
-  // ── Optional: Add cost line if amount is provided ──
-  if (amount !== undefined && expenseId) {
-    log.info(`Amount ${amount} provided — creating cost line`);
-    const costBody = {
-      travelExpense: { id: expenseId },
-      amount: Number(amount),
-      currency: currency ? { code: currency } : undefined,
-      description: title.trim()
-    };
-    
-    stepNum++;
-    steps.push({
-      stepNumber: stepNum,
-      description: `POST /v2/travelExpense/cost — add amount ${amount}`,
-      method: "POST",
-      endpoint: "/v2/travelExpense/cost",
-      body: costBody,
-    });
-    
-    const costRes = await client.post("/v2/travelExpense/cost", costBody);
-    stepResults.push({
-      stepNumber: stepNum,
-      success: costRes.status >= 200 && costRes.status < 300,
-      statusCode: costRes.status,
-      data: costRes.data,
-      duration: 0,
-    });
-  }
+  // Cost line removed — /v2/travelExpense/cost endpoint unverified in spec
+  // Amount is logged but not sent as separate cost to avoid 404
 
   return {
     plan: { summary: `Travel expense created: "${title}", ID: ${expenseId}`, steps },
