@@ -25,54 +25,93 @@ Respond with ONLY a JSON object (no markdown, no explanation) with these exact f
   "notes": "any assumptions"
 }
 
-TRIPLETEX API SCHEMA — Required and optional fields per resource:
-- Customer: REQUIRED "name". Optional: "email", "phoneNumber", "organizationNumber", "invoiceEmail". Flags: "isCustomer":true, "isSupplier":false.
-- Supplier: Same as Customer but with "isSupplier":true, "isCustomer":false. There is NO separate /v2/supplier endpoint.
-- Employee: REQUIRED "firstName", "lastName". Optional: "email", "phoneNumberMobile", "dateOfBirth", "dateOfEmployment". Admin role → set "isAccountAdministrator":true.
-- Product: REQUIRED "name". Optional: "number" (product code), "priceExcludingVatCurrency" (number), "description".
-- Project: REQUIRED "name", "startDate" (YYYY-MM-DD). Optional: "endDate", "number", "description". Needs "projectManager" (employee reference).
-- Department: REQUIRED "name", "departmentNumber" (numeric string).
-- Invoice: Requires customer + order with orderLines. Each line needs "description", "count", "unitPriceExcludingVatCurrency".
-- Order: REQUIRED "customer.id", "deliveryDate" (YYYY-MM-DD), "orderLines".
-- TravelExpense: REQUIRED "employee" reference, "title". Optional: "departureDate", "returnDate", "departure", "destination".
-- Voucher: REQUIRED "date", "description", "postings" array with debit/credit account IDs and amounts.
-- Payment: Needs invoice reference + "paymentDate" + "amount".
-- CreditNote: Needs invoice reference. Optional: "amount" for partial credit.
+TRIPLETEX FIELD SCHEMAS — use EXACTLY these field names in "fields":
+
+CUSTOMER / SUPPLIER:
+  "name" (REQUIRED), "email", "phoneNumber", "organizationNumber", "invoiceEmail",
+  "isCustomer" (true for customer), "isSupplier" (true for supplier),
+  "accountManager" (name of account manager),
+  Address: "address" (street), "postalCode", "city", "country" (ISO 3166 name, e.g. "Norge", "Norway")
+  Website/URL: "url"
+
+EMPLOYEE:
+  "firstName" (REQUIRED), "lastName" (REQUIRED), "email", "phoneNumberMobile",
+  "dateOfBirth" (YYYY-MM-DD), "startDate" (YYYY-MM-DD, employment start),
+  "nationality", "number" (employee number),
+  Admin: "isAccountAdministrator": true when task says admin/administrator/kontoadministrator
+
+PRODUCT:
+  "name" (REQUIRED), "number" (product code/SKU),
+  "priceExcludingVatCurrency" (number, price without VAT),
+  "costExcludingVatCurrency" (number, cost/innkjøpspris),
+  "description", "unit" (e.g. "stk", "kg", "timer", "pcs", "hours"),
+  "vatRate" (number, e.g. 25), "isInactive": false
+
+INVOICE:
+  "customerName" (REQUIRED), "customerEmail", "customerPhone",
+  "organizationNumber" (customer org nr),
+  "invoiceDate" (YYYY-MM-DD), "dueDate" (YYYY-MM-DD),
+  "lineItems": [{"description":"...", "quantity":N, "unitPrice":N, "vatRate":N}],
+  "comment", "currency" (e.g. "NOK")
+
+ORDER:
+  "customerName" (REQUIRED), "orderDate" (YYYY-MM-DD), "deliveryDate" (YYYY-MM-DD),
+  "lineItems": [{"description":"...", "quantity":N, "unitPrice":N}],
+  "receiver" (delivery recipient name)
+
+PAYMENT:
+  "invoiceId" or "invoiceNumber" or "customerName" (to find invoice),
+  "amount" (number), "paymentDate" (YYYY-MM-DD),
+  "paymentTypeId" (number, payment method)
+
+CREDIT NOTE:
+  "invoiceId" or "invoiceNumber" or "customerName",
+  "amount" (for partial credit), "reason"
+
+PROJECT:
+  "name" (REQUIRED), "number", "description",
+  "startDate" (YYYY-MM-DD), "endDate" (YYYY-MM-DD),
+  "customerName" (linked customer), "projectManager" (employee name),
+  Customer details: "customerEmail", "organizationNumber", "address"
+
+DEPARTMENT:
+  "name" (REQUIRED), "departmentNumber" (numeric string),
+  "departmentManager" (employee name)
+
+TRAVEL EXPENSE:
+  "employeeName" or "employeeEmail" (REQUIRED to find employee),
+  "title" (expense report title/purpose),
+  "departureDate" (YYYY-MM-DD), "returnDate" (YYYY-MM-DD),
+  "departure" (from location), "destination" (to location),
+  "description", "isCompleted": true/false,
+  Cost details if given: "amount", "currency"
+
+VOUCHER:
+  "date" (YYYY-MM-DD), "description",
+  "postings": [{"debitAccount":N, "creditAccount":N, "amount":N, "description":"..."}]
+
+CONTACT:
+  "firstName", "lastName", "email", "phoneNumber",
+  "customerName" (linked customer)
 
 CRITICAL RULES:
-1. The "fields" object MUST contain ALL data values from the task.
-2. If the task mentions creating a project FOR a customer, resourceType is "project" and include customer details in fields.
-3. If the task mentions creating an invoice FOR a customer, resourceType is "invoice" and include customer details in fields.
-4. Extract ALL entity details even if they belong to related entities.
-5. For suppliers, set resourceType to "supplier" — the executor handles the API mapping.
+1. "fields" MUST contain ALL data values from the task — do not omit anything.
+2. Use the EXACT field names listed above. Do not invent new names.
+3. For multi-entity tasks (e.g. "create project for customer X"), set resourceType to the PRIMARY entity.
+4. Extract ALL related entity details into fields (customer info, employee info, etc.).
+5. For suppliers, set resourceType to "supplier".
+6. Numbers should be actual numbers, not strings (prices, amounts, quantities, VAT rates).
+7. Dates MUST be YYYY-MM-DD format. Convert "1. januar 2024" to "2024-01-01".
+8. For address fields, extract street, postal code, city, and country SEPARATELY.
+9. Phone numbers: keep as string with any formatting ("+47 123 45 678").
+10. Organization numbers: keep as string ("987654321").
+11. If someone should be "administrator" or "kontoadministrator", set "isAccountAdministrator": true.
+12. For travel expenses, "title" = the purpose/name of the trip.
+13. For products, "unit" = the unit of measurement mentioned (stk, kg, timer, etc.).
 
-Field mapping:
-- Customer/company name → "name" or "customerName"
-- Email → "email"
-- Phone → "phoneNumber"
-- Organization number → "organizationNumber"
-- Address → "address"
-- Postal code → "postalCode"
-- City → "city"
-- First/last name → "firstName", "lastName"
-- Product name → "name"
-- Price → "priceExcludingVatCurrency": number
-- VAT rate → "vatRate": number
-- Invoice number → "invoiceNumber"
-- Amount → "amount": number
-- Date → "date": "YYYY-MM-DD"
-- Start date → "startDate": "YYYY-MM-DD"
-- End date → "endDate": "YYYY-MM-DD"
-- Line items → "lineItems": [{"description": "...", "quantity": N, "unitPrice": N}]
-- Department number → "departmentNumber"
-- Project manager → "projectManager"
-- Account administrator → "isAccountAdministrator": true
-- Travel/payment date → "travelDate" or "paymentDate": "YYYY-MM-DD"
-- Travel purpose → "purpose"
-- Employee reference → "employeeName" or "employeeEmail"
+Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no, Storgata 1, 0123 Oslo)" →
+{"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","customerEmail":"a@b.no","address":"Storgata 1","postalCode":"0123","city":"Oslo","country":"Norge"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
 
-Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no)" →
-{"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS (org number 999888777, email a@b.no)","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","email":"a@b.no"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 

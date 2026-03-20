@@ -14,13 +14,15 @@ export async function executeSupplierCreate(
   const log = logger.child("executor:supplier");
   const fields = parsed.fields ?? {};
 
-  const name = (fields.name ?? fields.supplierName ?? fields.companyName ?? fields.leverandør ?? fields.proveedor ?? fields.Lieferant ?? fields.fournisseur) as string | undefined;
-  const email = (fields.email ?? fields.emailAddress ?? fields.epost) as string | undefined;
-  const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon) as string | undefined;
-  const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer) as string | undefined;
-  const address = (fields.address ?? fields.adresse) as string | undefined;
+  const name = (fields.name ?? fields.supplierName ?? fields.companyName ?? fields.leverandør ?? fields.leverandørnavn ?? fields.proveedor ?? fields.Lieferant ?? fields.fournisseur) as string | undefined;
+  const email = (fields.email ?? fields.emailAddress ?? fields.epost ?? fields.correo ?? fields.supplierEmail) as string | undefined;
+  const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon ?? fields.supplierPhone) as string | undefined;
+  const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer ?? fields.orgNr ?? fields.orgnr) as string | undefined;
+  const address = (fields.address ?? fields.adresse ?? fields.addressLine1 ?? fields.dirección) as string | undefined;
   const postalCode = (fields.postalCode ?? fields.postnummer ?? fields.zipCode) as string | undefined;
-  const city = (fields.city ?? fields.poststed ?? fields.by) as string | undefined;
+  const city = (fields.city ?? fields.poststed ?? fields.by ?? fields.ciudad) as string | undefined;
+  const country = (fields.country ?? fields.land ?? fields.país ?? fields.Land ?? fields.pays) as string | undefined;
+  const url = (fields.url ?? fields.website ?? fields.nettside) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -48,11 +50,14 @@ export async function executeSupplierCreate(
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
   if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
-  if (address || postalCode || city) {
+  if (url) body.url = url;
+
+  if (address || postalCode || city || country) {
     body.postalAddress = {
       ...(address && { addressLine1: address }),
       ...(postalCode && { postalCode }),
       ...(city && { city }),
+      ...(country && { country: { name: country } }),
     };
   }
 

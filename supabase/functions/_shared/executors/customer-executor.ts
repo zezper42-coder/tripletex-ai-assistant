@@ -14,15 +14,18 @@ export async function executeCustomerCreate(
   const log = logger.child("executor:customer");
   const fields = parsed.fields ?? {};
 
-  // Normalize field names
-  const name = (fields.name ?? fields.customerName ?? fields.companyName) as string | undefined;
-  const email = (fields.email ?? fields.emailAddress ?? fields.epost) as string | undefined;
-  const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon) as string | undefined;
-  const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer) as string | undefined;
-  const invoiceEmail = (fields.invoiceEmail ?? fields.fakturaEpost) as string | undefined;
-  const address = (fields.address ?? fields.adresse) as string | undefined;
-  const postalCode = (fields.postalCode ?? fields.postnummer ?? fields.zipCode) as string | undefined;
-  const city = (fields.city ?? fields.poststed ?? fields.by) as string | undefined;
+  // Normalize field names — comprehensive multilingual alias mapping
+  const name = (fields.name ?? fields.customerName ?? fields.companyName ?? fields.kunde ?? fields.kundenavn ?? fields.firmanavn ?? fields.empresa ?? fields.Firmenname ?? fields.nom) as string | undefined;
+  const email = (fields.email ?? fields.emailAddress ?? fields.epost ?? fields.correo ?? fields.Email ?? fields.courriel ?? fields.customerEmail) as string | undefined;
+  const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon ?? fields.teléfono ?? fields.Telefon ?? fields.téléphone ?? fields.customerPhone ?? fields.phoneNumberMobile) as string | undefined;
+  const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer ?? fields.orgNr ?? fields.orgnr) as string | undefined;
+  const invoiceEmail = (fields.invoiceEmail ?? fields.fakturaEpost ?? fields.invoiceMail) as string | undefined;
+  const address = (fields.address ?? fields.adresse ?? fields.addressLine1 ?? fields.streetAddress ?? fields.gateadresse ?? fields.dirección ?? fields.Adresse ?? fields.adresse_postale) as string | undefined;
+  const postalCode = (fields.postalCode ?? fields.postnummer ?? fields.zipCode ?? fields.zip ?? fields.códigoPostal ?? fields.PLZ ?? fields.codePostal) as string | undefined;
+  const city = (fields.city ?? fields.poststed ?? fields.by ?? fields.ciudad ?? fields.Stadt ?? fields.ville) as string | undefined;
+  const country = (fields.country ?? fields.land ?? fields.país ?? fields.Land ?? fields.pays) as string | undefined;
+  const url = (fields.url ?? fields.website ?? fields.nettside ?? fields.webside ?? fields.sitioWeb ?? fields.Webseite ?? fields.siteWeb) as string | undefined;
+  const accountManager = (fields.accountManager ?? fields.kundeansvarlig ?? fields.kundekontakt) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -48,13 +51,28 @@ export async function executeCustomerCreate(
   if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
   if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
   if (normalizedFields.invoiceEmail) body.invoiceEmail = normalizedFields.invoiceEmail;
+  if (url) body.url = url;
+
   // Add postal address if provided
-  if (address || postalCode || city) {
+  if (address || postalCode || city || country) {
     body.postalAddress = {
       ...(address && { addressLine1: address }),
       ...(postalCode && { postalCode }),
       ...(city && { city }),
+      ...(country && { country: { name: country } }),
     };
+  }
+
+  // Resolve account manager if specified
+  if (accountManager) {
+    const parts = String(accountManager).trim().split(/\s+/);
+    const searchParams: Record<string, string> = { firstName: parts[0], count: "1", fields: "id" };
+    if (parts.length > 1) searchParams.lastName = parts.slice(1).join(" ");
+    const empRes = await client.get("/v2/employee", searchParams);
+    if (empRes.status === 200) {
+      const vals = ((empRes.data as any)?.values ?? []) as Array<{ id: number }>;
+      if (vals.length > 0) body.accountManager = { id: vals[0].id };
+    }
   }
 
   const plan: ExecutionPlan = {
