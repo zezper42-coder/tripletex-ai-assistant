@@ -113,6 +113,22 @@ export class TripletexClient {
     return this.request("POST", endpoint, { body });
   }
 
+  /**
+   * POST with automatic 422 retry: strips invalid fields and retries once.
+   */
+  async postWithRetry(endpoint: string, body: Record<string, unknown>): Promise<{ status: number; data: unknown }> {
+    const res = await this.post(endpoint, body);
+    if (res.status === 422) {
+      const badFields = extractValidationFields(res.data);
+      if (badFields.length > 0) {
+        this.logger.warn(`422 retry: stripping fields [${badFields.join(", ")}]`);
+        const cleaned = stripFields(body, badFields);
+        return this.post(endpoint, cleaned);
+      }
+    }
+    return res;
+  }
+
   put(endpoint: string, body: unknown) {
     return this.request("PUT", endpoint, { body });
   }
