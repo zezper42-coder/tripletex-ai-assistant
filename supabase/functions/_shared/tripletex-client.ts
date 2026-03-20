@@ -1,4 +1,5 @@
 import { Logger } from "./logger.ts";
+import { extractValidationFields, stripFields } from "./field-validation.ts";
 
 export interface TripletexConfig {
   baseUrl: string;
