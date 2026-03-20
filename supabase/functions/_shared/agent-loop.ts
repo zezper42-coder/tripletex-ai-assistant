@@ -395,7 +395,7 @@ async function callLLM(
 ): Promise<{ content?: string; tool_calls?: ToolCall[] }> {
   const start = Date.now();
 
-  const response = await fetch(GATEWAY_URL, {
+  const response = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
