@@ -203,7 +203,7 @@ export async function executeTravelExpenseCreate(
 
   log.info("Creating travel expense", { body });
   const createStart = Date.now();
-  const createRes = await client.post("/v2/travelExpense", body);
+  const createRes = await client.postWithRetry("/v2/travelExpense", body);
   const createDuration = Date.now() - createStart;
   const createSuccess = createRes.status >= 200 && createRes.status < 300;
 
