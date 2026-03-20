@@ -163,7 +163,7 @@ export async function runPipeline(
       };
     }
 
-    // 5. Fallback: LLM-planned execution for unsupported task types
+    // 6. Fallback: LLM-planned execution for unsupported task types
     logger.warn(`No dedicated executor for ${taskType}, falling back to LLM planner`);
 
     const plan = await planExecution(parsed, apiKey, logger);
@@ -171,6 +171,7 @@ export async function runPipeline(
     const allSucceeded = stepResults.every((r) => r.success);
 
     if (allSucceeded) {
+      saveSolution(parsed, plan, logger).catch(() => {});
       return {
         status: "completed",
         language: parsed.language,
@@ -192,6 +193,10 @@ export async function runPipeline(
 
     const swarmResult = await runSwarmFallback(parsed, plannerError, stepResults, client, logger);
     const swarmSuccess = swarmResult.stepResults.every(r => r.success);
+
+    if (swarmSuccess) {
+      saveSolution(parsed, swarmResult.plan, logger).catch(() => {});
+    }
 
     return {
       status: swarmSuccess ? "completed" : "failed",
