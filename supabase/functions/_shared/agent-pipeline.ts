@@ -223,3 +223,45 @@ export async function runPipeline(
     };
   }
 }
+
+/**
+ * Remap a cached execution plan with fresh field values from the current parsed task.
+ * The cached plan has the right structure/endpoints, but field values need updating.
+ */
+function remapCachedPlan(cachedPlan: ExecutionPlan, parsed: ParsedTask): ExecutionPlan {
+  const fields = parsed.fields;
+  if (!fields || Object.keys(fields).length === 0) return cachedPlan;
+
+  const remapped = JSON.parse(JSON.stringify(cachedPlan)) as ExecutionPlan;
+
+  for (const step of remapped.steps) {
+    if (step.body) {
+      step.body = mergeFields(step.body, fields);
+    }
+  }
+
+  return remapped;
+}
+
+/**
+ * Recursively merge parsed fields into a cached body template.
+ * Matches keys by name — if parsed.fields has "firstName" and the body has "firstName", overwrite it.
+ */
+function mergeFields(
+  body: Record<string, unknown>,
+  fields: Record<string, unknown>
+): Record<string, unknown> {
+  for (const [key, value] of Object.entries(fields)) {
+    if (key in body) {
+      if (typeof value === "object" && value !== null && typeof body[key] === "object" && body[key] !== null && !Array.isArray(value)) {
+        body[key] = mergeFields(body[key] as Record<string, unknown>, value as Record<string, unknown>);
+      } else {
+        body[key] = value;
+      }
+    } else {
+      // Add new fields from parsed task
+      body[key] = value;
+    }
+  }
+  return body;
+}
