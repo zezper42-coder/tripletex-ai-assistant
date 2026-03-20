@@ -98,10 +98,10 @@ export async function runSwarmFallback(
     previousError,
   });
 
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!openaiKey) {
-    swarmLogger.error("OPENAI_API_KEY not set");
-    return emptyResult("OPENAI_API_KEY not configured");
+  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!gatewayKey) {
+    swarmLogger.error("LOVABLE_API_KEY not set");
+    return emptyResult("LOVABLE_API_KEY not configured");
   }
 
   // Build context about what failed
