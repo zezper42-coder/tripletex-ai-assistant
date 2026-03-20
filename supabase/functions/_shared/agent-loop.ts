@@ -12,7 +12,7 @@ import { VatTypeLookup } from "./vat-lookup.ts";
 const MAX_ITERATIONS = 20;
 const TIMEOUT_MS = 240_000; // 4 min safety margin (competition limit is 5 min)
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = "gpt-4o";
+const MODEL = "o3";
 
 const TOOLS = [
   {
