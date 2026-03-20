@@ -67,7 +67,6 @@ export function validateProjectFields(fields: Record<string, unknown>): Validati
 }
 
 export function validateTravelExpenseDeleteFields(fields: Record<string, unknown>): ValidationError[] {
-  // At least one identifier must be present for safe deletion
   const hasId = fields.id !== undefined;
   const hasEmployee = fields.employeeName !== undefined;
   const hasDate = fields.date !== undefined;
@@ -77,5 +76,24 @@ export function validateTravelExpenseDeleteFields(fields: Record<string, unknown
   if (!hasId && !hasEmployee && !hasDate && !hasAmount && !hasDescription) {
     return [{ field: "identifiers", message: "At least one identifier required (id, employee, date, amount, or description)" }];
   }
+  return [];
+}
+
+export function validateCreditNoteFields(fields: Record<string, unknown>): ValidationError[] {
+  const hasInvoiceId = fields.invoiceId !== undefined || fields.invoice_id !== undefined;
+  const hasInvoiceNumber = fields.invoiceNumber !== undefined || fields.invoice_number !== undefined;
+  const hasCustomerName = fields.customerName !== undefined || fields.customer_name !== undefined;
+
+  if (!hasInvoiceId && !hasInvoiceNumber && !hasCustomerName) {
+    return [{ field: "invoiceReference", message: "At least one invoice reference required (invoiceId, invoiceNumber, or customerName)" }];
+  }
+
+  if (fields.amount !== undefined) {
+    const amt = Number(fields.amount);
+    if (isNaN(amt) || amt <= 0) {
+      return [{ field: "amount", message: `Amount must be positive: ${fields.amount}` }];
+    }
+  }
+
   return [];
 }

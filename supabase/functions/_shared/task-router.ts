@@ -12,6 +12,7 @@ import { executeTravelExpenseCreate } from "./executors/travel-expense-create-ex
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
 import { executeDepartmentCreate } from "./executors/department-executor.ts";
+import { executeCreditNoteCreate } from "./executors/credit-note-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -30,6 +31,7 @@ export type TaskType =
   | "travel_expense_delete"
   | "travel_expense_update"
   | "payment_create"
+  | "creditNote_create"
   | "unknown";
 
 type ExecutorFn = (
@@ -48,6 +50,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   invoice_create: executeInvoiceCreate,
   payment_create: executePaymentCreate,
   department_create: executeDepartmentCreate,
+  creditNote_create: executeCreditNoteCreate,
 };
 
 export function resolveTaskType(intent: string, resourceType: string): TaskType {

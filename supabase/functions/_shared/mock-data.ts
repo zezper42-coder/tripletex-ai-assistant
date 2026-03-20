@@ -13,6 +13,8 @@ export const SAMPLE_PROMPTS = {
 export function getMockResult(taskPrompt: string): PipelineResult {
   const lower = taskPrompt.toLowerCase();
 
+  const isCreditNote = ["credit note", "kreditnota", "kreditering", "krediter", "gutschrift", "nota de crédito", "note de crédit", "credit invoice", "reverse invoice", "reverser faktura"]
+    .some((kw) => lower.includes(kw));
   const isPayment = ["betaling", "payment", "zahlung", "pago", "paiement", "pagamento", "betal", "paid", "bezahlt"]
     .some((kw) => lower.includes(kw));
   const isInvoice = ["faktura", "invoice", "rechnung", "factura", "facture", "fatura"]
@@ -30,6 +32,7 @@ export function getMockResult(taskPrompt: string): PipelineResult {
   const isCreate = ["opprett", "create", "erstellen", "crear", "créer", "criar", "registrer", "ny ", "new ", "neue"]
     .some((kw) => lower.includes(kw));
 
+  if (isCreditNote) return buildMockCreditNote();
   if (isTravelKeyword && isDelete) return buildMockTravelExpenseDelete();
   if (isTravelKeyword && isCreate) return buildMockTravelExpenseCreate();
   if (isPayment) return buildMockPayment();
@@ -258,5 +261,29 @@ function buildMockDepartment(): PipelineResult {
     },
     stepResults: [{ stepNumber: 1, success: true, statusCode: 201, data: { value: { id: 90030, name: "Marketing" } }, duration: 32 }],
     verificationPassed: true, logs: [], duration: 110,
+  };
+}
+
+function buildMockCreditNote(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create credit note for invoice 10025",
+    intent: "create", resourceType: "creditNote",
+    fields: { invoiceNumber: "10025", reason: "Wrong amount", creditFullInvoice: true },
+    dependencies: [], confidence: 0.92, notes: "Mock mode — credit note executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: {
+      summary: "Credit note created for invoice 90011, credit note ID: 90050",
+      steps: [
+        { stepNumber: 1, description: 'GET /v2/invoice — search by number "10025"', method: "GET", endpoint: "/v2/invoice", queryParams: { invoiceNumber: "10025" }, resultKey: "invoiceSearch" },
+        { stepNumber: 2, description: 'PUT /v2/invoice/90011/:createCreditNote — full credit', method: "PUT", endpoint: "/v2/invoice/90011/:createCreditNote", resultKey: "creditNoteId" },
+      ],
+    },
+    stepResults: [
+      { stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90011, invoiceNumber: 10025, amount: 12500 }] }, duration: 30 },
+      { stepNumber: 2, success: true, statusCode: 200, data: { value: { id: 90050 } }, duration: 40 },
+    ],
+    verificationPassed: true, logs: [], duration: 160,
   };
 }
