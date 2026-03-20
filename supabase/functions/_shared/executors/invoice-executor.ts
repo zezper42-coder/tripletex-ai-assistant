@@ -356,7 +356,7 @@ export async function executeInvoiceCreate(
   log.info(`Invoice created via ${invoiceResult.variant}, ID: ${invoiceId}`);
 
   return {
-    plan: { summary: `Invoice created for ${inv.customerName}, order ${orderId} → invoice ${invoiceId}`, steps },
+    plan: { summary: `Invoice created for ${inv.customerName}, order ${orderId} → invoice ${invoiceId} (via ${invoiceResult.variant})`, steps },
     stepResults,
     verified: true,
   };
