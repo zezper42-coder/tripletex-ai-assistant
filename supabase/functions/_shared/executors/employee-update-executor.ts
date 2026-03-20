@@ -4,6 +4,7 @@ import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan, ExecutionStep } from "../types.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
 export async function executeEmployeeUpdate(
   parsed: ParsedTask,
