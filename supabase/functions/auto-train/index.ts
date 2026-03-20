@@ -298,6 +298,9 @@ serve(async (req) => {
         continue;
       }
 
+      // Track for uniqueness
+      generatedTasks.push(taskText);
+
       const solveRequest: SolveRequest = {
         task: taskText,
         tripletexApiUrl,
