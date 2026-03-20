@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      learned_solutions: {
+        Row: {
+          created_at: string
+          execution_plan: Json
+          id: string
+          intent: string
+          last_used_at: string
+          resource_type: string
+          success_count: number
+          task_signature: string
+          task_type: string
+        }
+        Insert: {
+          created_at?: string
+          execution_plan: Json
+          id?: string
+          intent: string
+          last_used_at?: string
+          resource_type: string
+          success_count?: number
+          task_signature: string
+          task_type: string
+        }
+        Update: {
+          created_at?: string
+          execution_plan?: Json
+          id?: string
+          intent?: string
+          last_used_at?: string
+          resource_type?: string
+          success_count?: number
+          task_signature?: string
+          task_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
