@@ -391,7 +391,11 @@ NOTE: Use postalAddress (NOT address) for supplier addresses.
 
 export const COMPACT_API_REFERENCE = `Tripletex API v2 Quick Reference:
 
-EMPLOYEE: POST/PUT /employee — fields: firstName, lastName, email, phoneNumberMobile, dateOfBirth, nationalIdentityNumber, bankAccountNumber, userType(STANDARD|EXTENDED|NO_ACCESS), address:{addressLine1,postalCode,city}, department:{id}. Employment dates via POST /employee/employment with employee:{id}, startDate.
+EMPLOYEE: POST/PUT /employee — fields: firstName, lastName, email, phoneNumberMobile, dateOfBirth(REQUIRED for employment), nationalIdentityNumber, bankAccountNumber, userType(STANDARD|EXTENDED|NO_ACCESS), address:{addressLine1,postalCode,city}, department:{id}. Employment dates via POST /employee/employment with employee:{id}, startDate.
+
+EMPLOYEE ENTITLEMENTS: PUT /employee/{id}/entitlement/:grantEntitlementsByTemplate — queryParams: templateType (e.g. "all_administrator"). Use this to grant admin role AFTER creating employee with userType EXTENDED.
+
+EMPLOYMENT: POST /employee/employment — fields: employee:{id}(REQ), startDate(REQ), employmentId, isMainEmployer, taxDeductionCode, division:{id}. NOTE: employee MUST have dateOfBirth set first.
 
 CUSTOMER: POST/PUT /customer — fields: name, organizationNumber, email, phoneNumber, postalAddress:{addressLine1,postalCode,city,country:{id}}, invoiceSendMethod(EMAIL|EHF|PAPER|MANUAL), language(NO|EN), isPrivateIndividual, website. Use postalAddress NOT address.
 
@@ -402,7 +406,7 @@ ORDER: POST /order — fields: customer:{id}(REQ), orderDate(REQ), orderLines:[{
 INVOICE: Two paths:
   Path A: POST /invoice with customer:{id}, invoiceDate, invoiceDueDate, orders:[{id}]
   Path B: POST /order then PUT /order/{id}/:invoice?invoiceDate=YYYY-MM-DD
-  Credit note: PUT /order/{id}/:invoice?invoiceIdIfIsCreditNote={invoiceId}
+  Credit note: PUT /invoice/{id}/:createCreditNote?date=YYYY-MM-DD
 
 PAYMENT: PUT /invoice/{id}/:payment — QUERY PARAMS (not body): paymentDate(REQ), paymentTypeId(REQ), paidAmount(REQ).
 
@@ -417,5 +421,13 @@ VOUCHER: POST /ledger/voucher — fields: date, description, voucherType:{id}, p
 CONTACT: POST /contact — fields: firstName, lastName, email, phoneNumberMobile, customer:{id}.
 
 SUPPLIER: POST /supplier — fields: name, organizationNumber, email, phoneNumber, postalAddress:{addressLine1,postalCode,city,country:{id}}.
+
+SALARY TRANSACTION: POST /salary/transaction — fields: year(REQ), month(REQ), payslips(REQ):[{employee:{id}, specifications:[{salaryType:{id}, count, rate, amount}]}]. GET /salary/type to look up salary types. Employee MUST have employment first.
+
+COMPANY MODULES: POST /company/salesmodules — body: {salesModule:{id:MODULE_ID}}. Used to enable features like department accounting.
+
+VAT TYPES: GET /ledger/vatType — look up VAT type IDs (e.g. 25% standard MVA).
+
+ACCOUNTS: GET /ledger/account — look up ledger account IDs.
 
 Key rules: refs always {id:N}. Norway country=161. GET responses: {value:{...}} or {values:[...]}. Always use fields=* on GET.`;
