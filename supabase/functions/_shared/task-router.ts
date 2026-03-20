@@ -5,6 +5,9 @@ import { TripletexClient } from "./tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "./types.ts";
 import { executeCustomerCreate } from "./executors/customer-executor.ts";
 import { executeEmployeeCreate } from "./executors/employee-executor.ts";
+import { executeProductCreate } from "./executors/product-executor.ts";
+import { executeProjectCreate } from "./executors/project-executor.ts";
+import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -33,12 +36,12 @@ type ExecutorFn = (
 const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   customer_create: executeCustomerCreate,
   employee_create: executeEmployeeCreate,
-  // TODO: product_create
+  product_create: executeProductCreate,
+  project_create: executeProjectCreate,
+  travel_expense_delete: executeTravelExpenseDelete,
   // TODO: invoice_create
-  // TODO: project_create
   // TODO: department_create
   // TODO: travel_expense_create
-  // TODO: travel_expense_delete
   // TODO: payment_create
 };
 

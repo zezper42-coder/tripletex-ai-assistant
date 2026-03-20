@@ -13,13 +13,21 @@ export const SAMPLE_PROMPTS = {
 export function getMockResult(taskPrompt: string): PipelineResult {
   const lower = taskPrompt.toLowerCase();
 
-  // Detect resource type from prompt for realistic mock
   const isEmployee = ["ansatt", "employee", "mitarbeiter", "tilsett", "empleado", "employé"]
     .some((kw) => lower.includes(kw));
+  const isProduct = ["produkt", "product", "producto", "produit", "produto"]
+    .some((kw) => lower.includes(kw));
+  const isProject = ["prosjekt", "project", "proyecto", "projekt", "projet", "projeto"]
+    .some((kw) => lower.includes(kw));
+  const isTravelDelete = ["slett", "delete", "eliminar", "supprimer", "excluir", "fjern", "remove"]
+    .some((kw) => lower.includes(kw)) &&
+    ["reiseregning", "travel expense", "gasto de viaje", "frais de voyage", "despesa de viagem", "reiseutgift"]
+      .some((kw) => lower.includes(kw));
 
-  if (isEmployee) {
-    return buildMockEmployee();
-  }
+  if (isTravelDelete) return buildMockTravelExpenseDelete();
+  if (isEmployee) return buildMockEmployee();
+  if (isProduct) return buildMockProduct();
+  if (isProject) return buildMockProject();
   return buildMockCustomer();
 }
 
