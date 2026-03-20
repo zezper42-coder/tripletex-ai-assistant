@@ -62,18 +62,42 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
     setError(null);
     setResponse(null);
 
+    const payload = {
+      tripletexApiUrl: apiUrl,
+      sessionToken,
+      iterations,
+      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+      mockMode,
+    };
+
     try {
       const { data, error: fnError } = await supabase.functions.invoke("auto-train", {
-        body: {
-          tripletexApiUrl: apiUrl,
-          sessionToken,
-          iterations,
-          categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-          mockMode,
-        },
+        body: payload,
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-train`;
+        const fallbackResponse = await fetch(functionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const fallbackData = await fallbackResponse.json().catch(() => null);
+        if (!fallbackResponse.ok) {
+          throw new Error(
+            fallbackData?.error || fnError.message || "Failed to send a request to the Edge Function"
+          );
+        }
+
+        setResponse(fallbackData as TrainResponse);
+        return;
+      }
+
       setResponse(data as TrainResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
