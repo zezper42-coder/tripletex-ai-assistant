@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SAMPLE_PROMPTS } from "@/lib/sample-prompts";
+import AutoTrainPanel from "@/components/AutoTrainPanel";
 
 interface AttachmentFile {
   filename: string;
