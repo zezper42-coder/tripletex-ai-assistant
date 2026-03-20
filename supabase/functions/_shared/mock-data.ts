@@ -13,6 +13,8 @@ export const SAMPLE_PROMPTS = {
 export function getMockResult(taskPrompt: string): PipelineResult {
   const lower = taskPrompt.toLowerCase();
 
+  const isCreditNote = ["credit note", "kreditnota", "kreditering", "krediter", "gutschrift", "nota de crédito", "note de crédit", "credit invoice", "reverse invoice", "reverser faktura"]
+    .some((kw) => lower.includes(kw));
   const isPayment = ["betaling", "payment", "zahlung", "pago", "paiement", "pagamento", "betal", "paid", "bezahlt"]
     .some((kw) => lower.includes(kw));
   const isInvoice = ["faktura", "invoice", "rechnung", "factura", "facture", "fatura"]
