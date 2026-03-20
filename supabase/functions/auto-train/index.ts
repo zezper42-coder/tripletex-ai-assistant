@@ -33,7 +33,11 @@ Requirements:
 - Make tasks that test edge cases: special characters (æøå), long names, zero amounts, future dates
 - Be creative and realistic — these should look like real accounting tasks
 
-IMPORTANT: Return ONLY the task prompt text, nothing else. No explanations, no JSON wrapping.
+IMPORTANT:
+- Return exactly ONE non-empty task prompt
+- Do not return labels, headings, JSON, markdown, bullets, or explanations
+- Do not return an empty response
+- The prompt must be directly usable as the task input for /solve
 
 Examples of good tasks:
 - "Opprett en ny kunde: Nordfjord Elektro AS, org.nr 987654321, adresse Storgata 15, 6770 Nordfjordeid, e-post post@nordfjord-elektro.no"
@@ -53,6 +57,74 @@ interface TrainResult {
   solutionLearned: boolean;
 }
 
+function normalizeTaskText(value: string): string {
+  return value
+    .trim()
+    .replace(/^```(?:text|json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .replace(/^task\s*:\s*/i, "")
+    .replace(/^prompt\s*:\s*/i, "")
+    .replace(/^['"“”‘’]+|['"“”‘’]+$/g, "")
+    .trim();
+}
+
+function extractTaskText(data: unknown): string {
+  if (!data || typeof data !== "object") return "";
+
+  const root = data as Record<string, unknown>;
+  const choices = Array.isArray(root.choices) ? root.choices : [];
+  const firstChoice = (choices[0] && typeof choices[0] === "object")
+    ? (choices[0] as Record<string, unknown>)
+    : null;
+  const message = firstChoice?.message && typeof firstChoice.message === "object"
+    ? (firstChoice.message as Record<string, unknown>)
+    : null;
+
+  const toolCalls = Array.isArray(message?.tool_calls) ? message.tool_calls : [];
+  for (const toolCall of toolCalls) {
+    if (!toolCall || typeof toolCall !== "object") continue;
+    const fn = (toolCall as Record<string, unknown>).function;
+    if (!fn || typeof fn !== "object") continue;
+    const args = (fn as Record<string, unknown>).arguments;
+    if (typeof args !== "string") continue;
+
+    try {
+      const parsedArgs = JSON.parse(args) as Record<string, unknown>;
+      if (typeof parsedArgs.task === "string") {
+        const task = normalizeTaskText(parsedArgs.task);
+        if (task) return task;
+      }
+    } catch {
+      // Ignore malformed tool arguments and fall back to content parsing.
+    }
+  }
+
+  const content = message?.content;
+  if (typeof content === "string") {
+    return normalizeTaskText(content);
+  }
+
+  if (Array.isArray(content)) {
+    const combined = content
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (!part || typeof part !== "object") return "";
+        const text = (part as Record<string, unknown>).text;
+        return typeof text === "string" ? text : "";
+      })
+      .join("\n");
+
+    return normalizeTaskText(combined);
+  }
+
+  const outputText = message?.output_text ?? firstChoice?.output_text ?? root.output_text;
+  if (typeof outputText === "string") {
+    return normalizeTaskText(outputText);
+  }
+
+  return "";
+}
+
 async function generateTask(
   apiKey: string,
   resourceType: string,
@@ -64,30 +136,68 @@ async function generateTask(
     .replace("{intent}", intent)
     .replace("{language}", language);
 
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "openai/gpt-5",
-      messages: [
-        { role: "system", content: prompt },
-        { role: "user", content: `Generate a ${intent} task for ${resourceType} in ${language}.` },
-      ],
-      temperature: 1.0,
-      max_completion_tokens: 500,
-    }),
-  });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "openai/gpt-5",
+        messages: [
+          { role: "system", content: prompt },
+          {
+            role: "user",
+            content: attempt === 0
+              ? `Generate a ${intent} task for ${resourceType} in ${language}.`
+              : `Previous response was empty. Return exactly one non-empty ${language} task prompt for ${resourceType} with intent ${intent}. Plain text only.`,
+          },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "emit_task",
+              description: "Return exactly one realistic Tripletex task prompt.",
+              parameters: {
+                type: "object",
+                properties: {
+                  task: { type: "string" },
+                },
+                required: ["task"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "emit_task" } },
+        temperature: 0.8,
+        max_completion_tokens: 500,
+      }),
+    });
 
-  if (!resp.ok) {
-    const err = await resp.text();
-    throw new Error(`OpenAI task generation failed: ${resp.status} ${err}`);
+    if (!resp.ok) {
+      const err = await resp.text();
+      throw new Error(`OpenAI task generation failed: ${resp.status} ${err}`);
+    }
+
+    const data = await resp.json();
+    const task = extractTaskText(data);
+    if (task) {
+      return task;
+    }
+
+    console.warn("[auto-train] Empty task generation response", {
+      resourceType,
+      intent,
+      language,
+      attempt: attempt + 1,
+      finishReason: data?.choices?.[0]?.finish_reason,
+    });
   }
 
-  const data = await resp.json();
-  return data.choices?.[0]?.message?.content?.trim() || "";
+  throw new Error("GPT returned empty task after 3 attempts");
 }
 
 serve(async (req) => {
@@ -119,7 +229,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    // gatewayKey already checked above
 
     if (!mockMode && !sessionToken) {
       return new Response(JSON.stringify({ error: "sessionToken required when not in mockMode" }), {
@@ -137,7 +246,7 @@ serve(async (req) => {
     let failed = 0;
     let newSolutionsLearned = 0;
 
-    const maxIterations = Math.min(iterations, 50); // cap at 50 per request
+    const maxIterations = Math.min(iterations, 50);
 
     for (let i = 0; i < maxIterations; i++) {
       const resourceType = activeResources[i % activeResources.length];
@@ -190,7 +299,7 @@ serve(async (req) => {
 
       const iterStart = Date.now();
       try {
-        const pipelineResult = await runPipeline(solveRequest, lovableKey);
+        const pipelineResult = await runPipeline(solveRequest, gatewayKey);
         const duration = Date.now() - iterStart;
 
         const swarmUsed = pipelineResult.logs.some(
