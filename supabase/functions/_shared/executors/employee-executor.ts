@@ -130,7 +130,35 @@ export async function executeEmployeeCreate(
   const employeeId = extractId(response.data);
   log.info(`Employee created with ID ${employeeId}`);
 
-  // Step 2: Assign admin role if detected
+  // Step 2: Create employment record if start date provided
+  if (startDate && employeeId) {
+    stepNum++;
+    log.info("Creating employment record with start date", { startDate });
+    const employmentBody: Record<string, unknown> = {
+      employee: { id: employeeId },
+      startDate,
+    };
+    steps.push({
+      stepNumber: stepNum,
+      description: `POST /v2/employment — set start date ${startDate}`,
+      method: "POST",
+      endpoint: "/v2/employment",
+      body: employmentBody,
+      resultKey: "employmentId",
+    });
+
+    const empStart = Date.now();
+    const empRes = await client.postWithRetry("/v2/employment", employmentBody);
+    stepResults.push({
+      stepNumber: stepNum,
+      success: empRes.status >= 200 && empRes.status < 300,
+      statusCode: empRes.status,
+      data: empRes.data,
+      duration: Date.now() - empStart,
+    });
+  }
+
+  // Step 3: Assign admin role if detected
   const shouldAssignAdmin = isAdminRole(fields) || adminInPrompt;
 
   if (shouldAssignAdmin && employeeId) {

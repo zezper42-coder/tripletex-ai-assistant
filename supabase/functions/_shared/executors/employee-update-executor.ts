@@ -98,7 +98,7 @@ export async function executeEmployeeUpdate(
 
   log.info("Updating employee", { employeeId });
   const start = Date.now();
-  const putRes = await client.put(`/v2/employee/${employeeId}`, updateBody);
+  const putRes = await client.putWithRetry(`/v2/employee/${employeeId}`, updateBody);
   const duration = Date.now() - start;
   const success = putRes.status >= 200 && putRes.status < 300;
 
@@ -111,8 +111,47 @@ export async function executeEmployeeUpdate(
     ...(!success && { error: `Update failed: ${putRes.status}` }),
   });
 
+  if (!success) {
+    return { plan: { summary: `Employee ${employeeId} update failed`, steps }, stepResults, verified: false };
+  }
+
+  // ── Admin role assignment ──
+  const ADMIN_KEYWORDS = [
+    "administrator", "kontoadministrator", "account administrator",
+    "admin", "brukeradministrator", "administrador", "Kontoadministrator",
+  ];
+  const promptLower = (parsed.normalizedPrompt ?? "").toLowerCase() + " " + (parsed.notes ?? "").toLowerCase();
+  const isAdmin = (f.isAccountAdministrator === true) || (f.isAdmin === true) ||
+    ADMIN_KEYWORDS.some(kw => promptLower.includes(kw.toLowerCase())) ||
+    ADMIN_KEYWORDS.some(kw => String(f.role ?? f.stilling ?? "").toLowerCase().includes(kw.toLowerCase()));
+
+  if (isAdmin) {
+    stepNum++;
+    log.info("Assigning administrator role to employee");
+    const grantUrl = `/v2/employee/entitlement/:grantEntitlementsByTemplate`;
+    steps.push({
+      stepNumber: stepNum,
+      description: `PUT ${grantUrl} — grant admin entitlements`,
+      method: "PUT",
+      endpoint: grantUrl,
+      body: {},
+      resultKey: "entitlementGrant",
+    });
+
+    const grantRes = await client.request("PUT", grantUrl, {
+      queryParams: { employeeId: String(employeeId), template: "all_administrator" },
+    });
+    stepResults.push({
+      stepNumber: stepNum,
+      success: grantRes.status >= 200 && grantRes.status < 300,
+      statusCode: grantRes.status,
+      data: grantRes.data,
+      duration: 0,
+    });
+  }
+
   return {
-    plan: { summary: `Employee ${employeeId} updated`, steps },
+    plan: { summary: `Employee ${employeeId} updated${isAdmin ? " (admin role assigned)" : ""}`, steps },
     stepResults,
     verified: success,
   };

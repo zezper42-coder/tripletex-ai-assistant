@@ -104,7 +104,7 @@ export async function executeCustomerUpdate(
 
   log.info("Updating customer", { customerId });
   const start = Date.now();
-  const putRes = await client.put(`/v2/customer/${customerId}`, updateBody);
+  const putRes = await client.putWithRetry(`/v2/customer/${customerId}`, updateBody);
   const duration = Date.now() - start;
   const success = putRes.status >= 200 && putRes.status < 300;
 
