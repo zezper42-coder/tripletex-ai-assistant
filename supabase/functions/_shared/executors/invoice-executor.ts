@@ -38,7 +38,7 @@ interface ValidationError {
 function validateInvoiceFields(fields: Record<string, unknown>): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  const customerName = fields.customerName ?? fields.customer_name ?? fields.customer;
+  const customerName = fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn;
   if (!customerName || (typeof customerName === "string" && !customerName.trim())) {
     errors.push({ field: "customerName", message: "Customer name or reference is required" });
   }
