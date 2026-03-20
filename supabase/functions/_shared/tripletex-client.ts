@@ -11,7 +11,8 @@ export class TripletexClient {
   private logger: Logger;
 
   constructor(config: TripletexConfig, logger: Logger) {
-    this.baseUrl = config.baseUrl.replace(/\/$/, "");
+    // Strip trailing slash and /v2 suffix to avoid double-prefixing (endpoints already include /v2)
+    this.baseUrl = config.baseUrl.replace(/\/$/, "").replace(/\/v2$/, "");
     this.authHeader = "Basic " + btoa(`0:${config.sessionToken}`);
     this.logger = logger;
   }
