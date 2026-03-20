@@ -41,6 +41,7 @@ export type TaskType =
   | "creditNote_create"
   | "supplier_create"
   | "contact_create"
+  | "voucher_create"
   | "unknown";
 
 type ExecutorFn = (
