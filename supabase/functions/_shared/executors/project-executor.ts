@@ -1,4 +1,4 @@
-// Project creation executor — deterministic, with optional customer lookup
+// Project creation executor — deterministic, with customer auto-creation and required fields
 
 import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
@@ -12,13 +12,20 @@ export async function executeProjectCreate(
   logger: Logger
 ): Promise<ExecutorResult> {
   const log = logger.child("executor:project");
-  const f = parsed.fields;
+  const f = parsed.fields ?? {};
 
   const name = (f.name ?? f.projectName ?? f.prosjektnavn ?? f.nombre ?? f.Projektname) as string | undefined;
   const projectNumber = (f.number ?? f.projectNumber ?? f.prosjektnummer) as string | undefined;
   const description = (f.description ?? f.beskrivelse ?? f.descripcion) as string | undefined;
   const customerRef = (f.customer ?? f.customerName ?? f.kunde ?? f.kundenavn ?? f.cliente) as string | undefined;
-  // TODO: projectManagerId may be required by Tripletex — need to confirm and potentially look up or default
+  const startDate = (f.startDate ?? f.startdato) as string | undefined;
+  const endDate = (f.endDate ?? f.sluttdato) as string | undefined;
+
+  // Customer fields that might be in the parsed task (for multi-resource tasks)
+  const customerEmail = (f.customerEmail ?? f.email ?? f.epost) as string | undefined;
+  const customerPhone = (f.customerPhone ?? f.phoneNumber ?? f.telefon ?? f.phone) as string | undefined;
+  const customerOrgNr = (f.organizationNumber ?? f.orgNumber ?? f.organisasjonsnummer ?? f.customerOrgNumber) as string | undefined;
+  const customerAddress = (f.address ?? f.adresse) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -36,11 +43,13 @@ export async function executeProjectCreate(
   const steps: ExecutionStep[] = [];
   const stepResults: StepResult[] = [];
   let customerId: number | undefined;
+  let stepCounter = 0;
 
-  // If customer referenced, search for exact match
+  // If customer referenced, search for exact match first, then create if not found
   if (customerRef) {
+    stepCounter++;
     steps.push({
-      stepNumber: 1,
+      stepNumber: stepCounter,
       description: `GET /v2/customer — search for "${customerRef}"`,
       method: "GET",
       endpoint: "/v2/customer",
@@ -55,7 +64,7 @@ export async function executeProjectCreate(
 
     const searchSuccess = searchResp.status >= 200 && searchResp.status < 300;
     stepResults.push({
-      stepNumber: 1,
+      stepNumber: stepCounter,
       success: searchSuccess,
       statusCode: searchResp.status,
       data: searchResp.data,
@@ -64,23 +73,60 @@ export async function executeProjectCreate(
 
     if (searchSuccess) {
       const customers = extractListValues(searchResp.data);
-      if (customers.length === 1) {
+      const exact = customers.find(
+        (c: Record<string, unknown>) =>
+          String(c.name).toLowerCase() === customerRef.toLowerCase()
+      );
+      if (exact) {
+        customerId = exact.id as number;
+        log.info(`Found exact customer match ID ${customerId}`);
+      } else if (customers.length === 1) {
         customerId = customers[0].id as number;
-        log.info(`Found customer ID ${customerId}`);
-      } else if (customers.length === 0) {
-        log.warn("Customer not found, project will be created without customer link");
-        // Don't fail — create project without customer
+        log.info(`Found single customer ID ${customerId}`);
+      }
+    }
+
+    // Auto-create customer if not found
+    if (!customerId) {
+      stepCounter++;
+      const customerBody: Record<string, unknown> = {
+        name: customerRef,
+        isCustomer: true,
+        isSupplier: false,
+      };
+      if (customerEmail) customerBody.email = customerEmail;
+      if (customerPhone) customerBody.phoneNumber = customerPhone;
+      if (customerOrgNr) customerBody.organizationNumber = customerOrgNr;
+
+      log.info("Customer not found, creating", { customerBody });
+      steps.push({
+        stepNumber: stepCounter,
+        description: `POST /v2/customer — create "${customerRef}"`,
+        method: "POST",
+        endpoint: "/v2/customer",
+        body: customerBody,
+        resultKey: "customerId",
+      });
+
+      const cStart = Date.now();
+      const createResp = await client.post("/v2/customer", customerBody);
+      const cDuration = Date.now() - cStart;
+      const cSuccess = createResp.status >= 200 && createResp.status < 300;
+
+      stepResults.push({
+        stepNumber: stepCounter,
+        success: cSuccess,
+        statusCode: createResp.status,
+        data: createResp.data,
+        duration: cDuration,
+        ...(!cSuccess && { error: `Customer creation failed: ${createResp.status}` }),
+      });
+
+      if (cSuccess) {
+        customerId = extractId(createResp.data);
+        log.info(`Customer created with ID ${customerId}`);
       } else {
-        log.warn(`Ambiguous customer search: ${customers.length} results`);
-        // Use first exact match if available
-        const exact = customers.find(
-          (c: Record<string, unknown>) =>
-            String(c.name).toLowerCase() === customerRef.toLowerCase()
-        );
-        if (exact) {
-          customerId = exact.id as number;
-          log.info(`Using exact match customer ID ${customerId}`);
-        }
+        log.warn("Customer creation failed, continuing without customer link");
       }
     }
   }
@@ -91,7 +137,6 @@ export async function executeProjectCreate(
   if (pmField && typeof pmField === "number") {
     projectManagerId = pmField;
   } else if (pmField && typeof pmField === "string") {
-    // Search for employee by name
     const empSearch = await client.get("/v2/employee", { firstName: pmField.split(" ")[0], count: "1", fields: "id" });
     if (empSearch.status === 200) {
       const vals = extractListValues(empSearch.data);
@@ -99,7 +144,6 @@ export async function executeProjectCreate(
     }
   }
   if (!projectManagerId) {
-    // Fall back to first available employee
     const empList = await client.get("/v2/employee", { count: "1", fields: "id" });
     if (empList.status === 200) {
       const vals = extractListValues(empList.data);
@@ -110,17 +154,22 @@ export async function executeProjectCreate(
     log.info(`Using project manager employee ID ${projectManagerId}`);
   }
 
+  // Default startDate to today if not provided — Tripletex REQUIRES it
+  const today = new Date().toISOString().slice(0, 10);
+
   const body: Record<string, unknown> = {
     name: normalizedFields.name,
+    startDate: startDate || today,
     ...(projectManagerId && { projectManager: { id: projectManagerId } }),
   };
+  if (endDate) body.endDate = endDate;
   if (normalizedFields.number) body.number = normalizedFields.number;
   if (normalizedFields.description) body.description = normalizedFields.description;
   if (customerId) body.customer = { id: customerId };
 
-  const createStepNumber = customerRef ? 2 : 1;
+  stepCounter++;
   steps.push({
-    stepNumber: createStepNumber,
+    stepNumber: stepCounter,
     description: `POST /v2/project — create "${normalizedFields.name}"`,
     method: "POST",
     endpoint: "/v2/project",
@@ -140,7 +189,7 @@ export async function executeProjectCreate(
   const success = response.status >= 200 && response.status < 300;
 
   stepResults.push({
-    stepNumber: createStepNumber,
+    stepNumber: stepCounter,
     success,
     statusCode: response.status,
     data: response.data,

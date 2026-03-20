@@ -25,24 +25,36 @@ Respond with ONLY a JSON object (no markdown, no explanation) with these exact f
   "notes": "any assumptions"
 }
 
-CRITICAL: The "fields" object MUST contain ALL data values from the task:
-- Customer/company name → "name": "..."
-- Email → "email": "..."
-- Phone → "phoneNumber": "..."
-- Organization number → "organizationNumber": "..."
-- First/last name → "firstName": "...", "lastName": "..."
-- Product name → "name": "..."
+CRITICAL RULES:
+1. The "fields" object MUST contain ALL data values from the task.
+2. If the task mentions creating a project FOR a customer, resourceType is "project" and include customer details in fields.
+3. If the task mentions creating an invoice FOR a customer, resourceType is "invoice" and include customer details in fields.
+4. Extract ALL entity details even if they belong to related entities.
+
+Field mapping:
+- Customer/company name → "name" or "customerName"
+- Email → "email"
+- Phone → "phoneNumber"
+- Organization number → "organizationNumber"
+- Address → "address"
+- Postal code → "postalCode"
+- City → "city"
+- First/last name → "firstName", "lastName"
+- Product name → "name"
 - Price → "priceExcludingVatCurrency": number
 - VAT rate → "vatRate": number
-- Invoice number → "invoiceNumber": "..."
+- Invoice number → "invoiceNumber"
 - Amount → "amount": number
 - Date → "date": "YYYY-MM-DD"
+- Start date → "startDate": "YYYY-MM-DD"
+- End date → "endDate": "YYYY-MM-DD"
 - Line items → "lineItems": [{"description": "...", "quantity": N, "unitPrice": N}]
-- Department number → "departmentNumber": "..."
+- Department number → "departmentNumber"
+- Project manager → "projectManager"
+- Account administrator → "isAccountAdministrator": true
 
-Example: "Opprett kunde Firma AS med e-post a@b.no" →
-{"language":"nb","normalizedPrompt":"Create customer Firma AS with email a@b.no","intent":"create","resourceType":"customer","fields":{"name":"Firma AS","email":"a@b.no"},"dependencies":[],"confidence":0.95,"notes":""}`;
-
+Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no)" →
+{"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS (org number 999888777, email a@b.no)","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","email":"a@b.no"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
   const response = await fetch(LOVABLE_AI_URL, {
     method: "POST",
     headers: {
