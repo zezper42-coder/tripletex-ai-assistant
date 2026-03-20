@@ -1,35 +1,19 @@
-## Implemented Changes (Round 3)
+## Implemented Changes (Round 4 — OpenAPI Spec Integration)
 
 ### Done
-1. **Removed verification in LLM fallback pipeline** — `agent-pipeline.ts` no longer calls `verifyExecution()`. Saves 1-3 API calls per task.
+1. **Fixed supplier endpoint** — `supplier-executor.ts` now POSTs to `/v2/customer` with `isSupplier: true` instead of non-existent `/v2/supplier`.
 
-2. **Optimized employee executor** — Removed fallback department lookup (was always fetching dept even when not specified). Now only searches if department is explicitly mentioned. Saves 1 API call.
+2. **Wired `postWithRetry` into ALL executors** — Every executor now uses `client.postWithRetry()` for automatic 422 recovery (strip invalid fields + retry once):
+   - customer, employee, product, department, supplier, contact, voucher, project, invoice (customer + order), travel expense, payment
 
-3. **Added supplier/contact heuristics** — `heuristics.ts` now includes `SUPPLIER_KEYWORDS` and `CONTACT_KEYWORDS` for correct routing.
+3. **Removed travel expense cost line** — Removed the unverified `/v2/travelExpense/cost` POST that likely caused 404 errors.
 
-4. **Switched planner model** — `task-planner.ts` now uses `google/gemini-2.5-flash` instead of `openai/gpt-5`. Faster and cheaper.
+4. **Enhanced LLM parser prompt** — Added full Tripletex API schema requirements (required/optional fields per resource type) to reduce LLM misclassification.
 
-5. **Added 422 auto-retry** — `TripletexClient.postWithRetry()` parses `validationMessages`, strips bad fields, retries once. `extractValidationFields()` and `stripFields()` helpers added to `field-validation.ts`.
+5. **Added voucher + order heuristic keywords** — `heuristics.ts` now routes "bilag", "bestilling", "ordre" etc. correctly.
 
-6. **Added voucher executor** — New `voucher_create` executor for Tier 3 ledger tasks. POST `/v2/ledger/voucher` with debit/credit postings.
+### Total executor count: 15 (unchanged)
+### API call savings per task: 1-3 fewer (no verification + no cost line + postWithRetry avoids manual retry logic)
 
-7. **Improved attachment OCR prompt** — More specific structured JSON extraction prompt for invoices, travel expenses, etc.
-
-### Total executor count: 15
-- customer_create, customer_update
-- employee_create, employee_update
-- product_create, department_create, project_create
-- invoice_create, payment_create, creditNote_create
-- travel_expense_create, travel_expense_delete
-- supplier_create, contact_create
-- voucher_create (NEW)
-
-### API call savings per task
-- Removed verification: -1 to -3 calls
-- Employee no-dept: -1 call
-- Total: 2-4 fewer calls per task → better efficiency bonus
-
-### Still needed
-- Use `postWithRetry` in more executors (currently available, not yet wired in all)
-- Live test voucher executor
-- `travel_expense_update` executor
+### Submit URL
+`https://lbhntwxejshppcasdmxh.supabase.co/functions/v1/solve`
