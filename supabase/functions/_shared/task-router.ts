@@ -8,6 +8,7 @@ import { executeEmployeeCreate } from "./executors/employee-executor.ts";
 import { executeProductCreate } from "./executors/product-executor.ts";
 import { executeProjectCreate } from "./executors/project-executor.ts";
 import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
+import { executeTravelExpenseCreate } from "./executors/travel-expense-create-executor.ts";
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
 import { executeDepartmentCreate } from "./executors/department-executor.ts";
@@ -27,6 +28,7 @@ export type TaskType =
   | "department_create"
   | "travel_expense_create"
   | "travel_expense_delete"
+  | "travel_expense_update"
   | "payment_create"
   | "unknown";
 
@@ -42,11 +44,10 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   product_create: executeProductCreate,
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
+  travel_expense_create: executeTravelExpenseCreate,
   invoice_create: executeInvoiceCreate,
   payment_create: executePaymentCreate,
   department_create: executeDepartmentCreate,
-  // TODO: travel_expense_create
-  // TODO: travel_expense_create
 };
 
 export function resolveTaskType(intent: string, resourceType: string): TaskType {
