@@ -5,6 +5,7 @@ import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { validateEmployeeFields, ValidationError } from "../field-validation.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
 const ADMIN_KEYWORDS = [
   "administrator", "kontoadministrator", "account administrator",
