@@ -1,3 +1,5 @@
+// Hardened agent pipeline with deterministic routing, heuristics, and structured debug output
+
 import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
 import { parseTask } from "./task-parser.ts";
@@ -6,6 +8,8 @@ import { executeplan } from "./task-executor.ts";
 import { verifyExecution } from "./task-verifier.ts";
 import { processAttachments } from "./attachment-handler.ts";
 import { getMockResult } from "./mock-data.ts";
+import { runHeuristics } from "./heuristics.ts";
+import { resolveTaskType, getExecutor } from "./task-router.ts";
 import { SolveRequest, PipelineResult } from "./types.ts";
 
 export async function runPipeline(
@@ -39,35 +43,79 @@ export async function runPipeline(
       ? `${request.task}\n\nAttachment contents:${attachmentContext}`
       : request.task;
 
-    // 2. Parse task
-    logger.info("Step 1: Parsing task");
+    // 2. Run heuristics for confidence signals
+    logger.info("Step 1: Running heuristics");
+    const heuristics = runHeuristics(fullPrompt, logger);
+
+    // 3. Parse task with LLM
+    logger.info("Step 2: Parsing task with LLM");
     const parsed = await parseTask(fullPrompt, apiKey, logger);
 
-    // 3. Plan execution
-    logger.info("Step 2: Planning execution");
+    // Apply heuristic confidence boost
+    if (heuristics.confidenceBoost > 0) {
+      parsed.confidence = Math.min(1, parsed.confidence + heuristics.confidenceBoost);
+      logger.info(`Confidence adjusted: ${parsed.confidence} (boost: +${heuristics.confidenceBoost})`);
+    }
+
+    // Cross-validate heuristics vs LLM
+    if (heuristics.likelyResource && heuristics.likelyResource !== parsed.resourceType) {
+      logger.warn("Heuristic/LLM resource mismatch", {
+        heuristic: heuristics.likelyResource,
+        llm: parsed.resourceType,
+        signals: heuristics.signals,
+      });
+      // Trust LLM but log the mismatch
+    }
+
+    // 4. Try deterministic executor first
+    const taskType = resolveTaskType(parsed.intent, parsed.resourceType);
+    logger.info(`Task type resolved: ${taskType}`);
+
+    const executor = getExecutor(taskType);
+
+    if (executor) {
+      // Deterministic path — use dedicated executor
+      logger.info(`Using dedicated executor for ${taskType}`);
+      const client = new TripletexClient(
+        { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
+        logger.child("tripletex")
+      );
+
+      const executorResult = await executor(parsed, client, logger);
+
+      const allSucceeded = executorResult.stepResults.every((r) => r.success);
+
+      return {
+        status: allSucceeded ? "completed" : "failed",
+        language: parsed.language,
+        parsedTask: parsed,
+        executionPlan: executorResult.plan,
+        stepResults: executorResult.stepResults,
+        verificationPassed: executorResult.verified,
+        logs: logger.getEntries(),
+        duration: Date.now() - start,
+      };
+    }
+
+    // 5. Fallback: LLM-planned execution for unsupported task types
+    logger.warn(`No dedicated executor for ${taskType}, falling back to LLM planner`);
+
     const plan = await planExecution(parsed, apiKey, logger);
 
-    // 4. Execute
-    logger.info("Step 3: Executing plan");
     const client = new TripletexClient(
       { baseUrl: request.tripletexApiUrl, sessionToken: request.sessionToken },
       logger.child("tripletex")
     );
     const stepResults = await executeplan(plan, client, logger);
 
-    // 5. Verify
-    logger.info("Step 4: Verifying results");
     const allSucceeded = stepResults.every((r) => r.success);
     let verified = false;
-
     if (allSucceeded) {
       verified = await verifyExecution(plan, stepResults, client, logger);
     }
 
-    const status = allSucceeded ? "completed" : "failed";
-
     return {
-      status,
+      status: allSucceeded ? "completed" : "failed",
       language: parsed.language,
       parsedTask: parsed,
       executionPlan: plan,
