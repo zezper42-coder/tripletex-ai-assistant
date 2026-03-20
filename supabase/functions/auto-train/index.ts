@@ -112,10 +112,9 @@ serve(async (req) => {
       mockMode = false,
     } = body;
 
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!openaiKey) {
-      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
+    const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
+    if (!gatewayKey) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
