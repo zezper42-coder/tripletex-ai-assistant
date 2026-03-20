@@ -12,6 +12,7 @@ import { executeTravelExpenseCreate } from "./executors/travel-expense-create-ex
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
 import { executeDepartmentCreate } from "./executors/department-executor.ts";
+import { executeCreditNoteCreate } from "./executors/credit-note-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
