@@ -31,9 +31,9 @@ PRODUCTS:
 - POST /product — create product (required: name)
 
 INVOICES:
-- POST /invoice — create invoice (required: invoiceDate, deliveryDate, orders[])
-- POST /order — create order first (required: customer.id, deliveryDate, orderLines[])
-- POST /order/{id}/:invoice — create invoice from order
+- POST /invoice — create invoice (required: invoiceDate, invoiceDueDate, orders[])
+- POST /order — create order first (required: customer.id, orderDate, deliveryDate, orderLines[])
+- PUT /order/{id}/:invoice — create invoice from order (NOT POST, must be PUT with invoiceDate and invoiceDueDate in body)
 
 PAYMENTS:
 - POST /payment — register payment (required: amount, date, paymentType.id)
