@@ -108,3 +108,48 @@ function buildMockEmployee(): PipelineResult {
     duration: 140,
   };
 }
+
+function buildMockProduct(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create a new product named Consulting Service",
+    intent: "create", resourceType: "product",
+    fields: { name: "Consulting Service", priceExcludingVatCurrency: 1500 },
+    dependencies: [], confidence: 0.95, notes: "Mock mode — product executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: { summary: "Create product: Consulting Service", steps: [{ stepNumber: 1, description: 'POST /v2/product', method: "POST", endpoint: "/v2/product", body: { name: "Consulting Service", priceExcludingVatCurrency: 1500 }, resultKey: "productId" }] },
+    stepResults: [{ stepNumber: 1, success: true, statusCode: 201, data: { value: { id: 90003, name: "Consulting Service" } }, duration: 42 }],
+    verificationPassed: true, logs: [], duration: 130,
+  };
+}
+
+function buildMockProject(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Create a new project called Website Redesign",
+    intent: "create", resourceType: "project",
+    fields: { name: "Website Redesign", customer: "Acme Corp" },
+    dependencies: [], confidence: 0.93, notes: "Mock mode — project executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: { summary: "Create project: Website Redesign", steps: [{ stepNumber: 1, description: 'POST /v2/project', method: "POST", endpoint: "/v2/project", body: { name: "Website Redesign" }, resultKey: "projectId" }] },
+    stepResults: [{ stepNumber: 1, success: true, statusCode: 201, data: { value: { id: 90004, name: "Website Redesign" } }, duration: 50 }],
+    verificationPassed: true, logs: [], duration: 150,
+  };
+}
+
+function buildMockTravelExpenseDelete(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Delete travel expense for employee",
+    intent: "delete", resourceType: "travelExpense",
+    fields: { employeeName: "Carlos García", date: "2024-03-15", amount: 1500 },
+    dependencies: [], confidence: 0.91, notes: "Mock mode — travel expense delete path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: { summary: "Delete travel expense ID 90005", steps: [{ stepNumber: 1, description: 'GET /v2/travelExpense — search', method: "GET", endpoint: "/v2/travelExpense", resultKey: "searchResult" }, { stepNumber: 2, description: 'DELETE /v2/travelExpense/90005', method: "DELETE", endpoint: "/v2/travelExpense/90005", resultKey: "deleteResult" }] },
+    stepResults: [{ stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90005 }] }, duration: 35 }, { stepNumber: 2, success: true, statusCode: 204, data: null, duration: 28 }],
+    verificationPassed: true, logs: [], duration: 160,
+  };
+}
