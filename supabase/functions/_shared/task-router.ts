@@ -31,6 +31,7 @@ export type TaskType =
   | "employee_create"
   | "employee_update"
   | "product_create"
+  | "product_update"
   | "invoice_create"
   | "project_create"
   | "department_create"
@@ -40,6 +41,7 @@ export type TaskType =
   | "payment_create"
   | "creditNote_create"
   | "supplier_create"
+  | "supplier_update"
   | "contact_create"
   | "voucher_create"
   | "unknown";
@@ -56,6 +58,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   employee_create: executeEmployeeCreate,
   employee_update: executeEmployeeUpdate,
   product_create: executeProductCreate,
+  // product_update and supplier_update fall to swarm (different endpoint patterns)
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
   travel_expense_create: executeTravelExpenseCreate,
@@ -64,6 +67,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   department_create: executeDepartmentCreate,
   creditNote_create: executeCreditNoteCreate,
   supplier_create: executeSupplierCreate,
+  // supplier_update falls to swarm
   contact_create: executeContactCreate,
   voucher_create: executeVoucherCreate,
 };
