@@ -12,7 +12,7 @@ export async function executeCustomerCreate(
   logger: Logger
 ): Promise<ExecutorResult> {
   const log = logger.child("executor:customer");
-  const fields = parsed.fields;
+  const fields = parsed.fields ?? {};
 
   // Normalize field names
   const name = (fields.name ?? fields.customerName ?? fields.companyName) as string | undefined;
