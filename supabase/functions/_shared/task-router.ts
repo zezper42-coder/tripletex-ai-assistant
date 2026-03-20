@@ -28,6 +28,7 @@ export type TaskType =
   | "department_create"
   | "travel_expense_create"
   | "travel_expense_delete"
+  | "travel_expense_update"
   | "payment_create"
   | "unknown";
 

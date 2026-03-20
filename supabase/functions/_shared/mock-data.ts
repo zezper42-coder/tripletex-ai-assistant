@@ -219,6 +219,30 @@ function buildMockPayment(): PipelineResult {
   };
 }
 
+function buildMockTravelExpenseCreate(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "nb", normalizedPrompt: "Opprett reiseregning for Ola Nordmann",
+    intent: "create", resourceType: "travel_expense",
+    fields: { employeeName: "Ola Nordmann", travelDate: "2026-03-18", amount: 1250, description: "Tog og hotell", fromLocation: "Bergen", toLocation: "Oslo" },
+    dependencies: [], confidence: 0.89, notes: "Mock mode — travel expense create path",
+  };
+  return {
+    status: "completed", language: "nb", parsedTask: parsed,
+    executionPlan: {
+      summary: 'Travel expense created: "Tog og hotell", ID: 90040',
+      steps: [
+        { stepNumber: 1, description: 'GET /v2/employee — search by name "Ola Nordmann"', method: "GET", endpoint: "/v2/employee", queryParams: { firstName: "Ola", lastName: "Nordmann" }, resultKey: "employeeSearch" },
+        { stepNumber: 2, description: 'POST /v2/travelExpense — create "Tog og hotell"', method: "POST", endpoint: "/v2/travelExpense", resultKey: "travelExpenseId" },
+      ],
+    },
+    stepResults: [
+      { stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90002, firstName: "Ola", lastName: "Nordmann" }] }, duration: 30 },
+      { stepNumber: 2, success: true, statusCode: 201, data: { value: { id: 90040, title: "Tog og hotell" } }, duration: 45 },
+    ],
+    verificationPassed: true, logs: [], duration: 170,
+  };
+}
+
 function buildMockDepartment(): PipelineResult {
   const parsed: ParsedTask = {
     language: "en", normalizedPrompt: "Create department Marketing",

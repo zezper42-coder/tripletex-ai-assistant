@@ -36,4 +36,11 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   es_department: "Crear un nuevo departamento llamado Ventas con número 10",
   pt_department: "Criar um novo departamento chamado Financeiro com número 40",
   fr_department: "Créer un nouveau département nommé Ressources Humaines avec le numéro 50",
+  // Travel expense creation
+  nb_travel_create: "Opprett reiseregning for Ola Nordmann, reise fra Bergen til Oslo 18. mars 2026, tog og hotell 1250 NOK",
+  en_travel_create: "Create a travel expense for employee john.doe@company.com, March 18 2026, flight from London to Oslo, 3500 NOK",
+  de_travel_create: "Erstellen Sie eine Reisekostenabrechnung für Mitarbeiter Hans Müller, 500 EUR, Zugfahrt Hamburg-Berlin",
+  es_travel_create: "Crear un gasto de viaje para el empleado Carlos García, 15 de marzo, 1500 NOK, reunión con cliente",
+  en_travel_create_email: "Register travel expense for jane.smith@acme.no, travel date 2026-03-20, purpose: customer meeting, amount 2800 NOK",
+  nb_travel_create_route: "Registrer reiseregning for Kari Nordmann fra Trondheim til Stavanger, formål kundemøte, 2200 NOK",
 };
