@@ -31,6 +31,9 @@ export function getMockResult(taskPrompt: string): PipelineResult {
   if (isTravelDelete) return buildMockTravelExpenseDelete();
   if (isPayment) return buildMockPayment();
   if (isInvoice) return buildMockInvoice();
+  const isDepartment = ["avdeling", "department", "abteilung", "departamento", "département"]
+    .some((kw) => lower.includes(kw));
+  if (isDepartment) return buildMockDepartment();
   if (isEmployee) return buildMockEmployee();
   if (isProduct) return buildMockProduct();
   if (isProject) return buildMockProject();
