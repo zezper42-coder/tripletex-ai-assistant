@@ -90,7 +90,8 @@ export async function executeEmployeeCreate(
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumberMobile) body.phoneNumberMobile = normalizedFields.phoneNumberMobile;
   if (normalizedFields.dateOfBirth) body.dateOfBirth = normalizedFields.dateOfBirth;
-  if (startDate) body.dateOfEmployment = startDate;
+  // Note: dateOfEmployment does NOT exist on the Tripletex employee object.
+  // Employment dates are managed via the /v2/employment endpoint after creation.
 
   // Step 1: Create employee
   stepNum++;

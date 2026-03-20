@@ -13,7 +13,7 @@ Tripletex REST API v2 — Key endpoints:
 
 EMPLOYEES:
 - GET /employee?firstName=X&lastName=Y — search employees
-- POST /employee — create employee (required: firstName, lastName)
+- POST /employee — create employee (required: firstName, lastName, userType: "STANDARD"). Do NOT include dateOfEmployment or employmentDate — those fields do not exist.
 - PUT /employee/{id} — update employee (send full object with version)
 - PUT /employee/{id}/entitlement — set roles (e.g. all_administrator)
 
@@ -31,9 +31,9 @@ PRODUCTS:
 - POST /product — create product (required: name)
 
 INVOICES:
-- POST /invoice — create invoice (required: invoiceDate, deliveryDate, orders[])
-- POST /order — create order first (required: customer.id, deliveryDate, orderLines[])
-- POST /order/{id}/:invoice — create invoice from order
+- POST /invoice — create invoice (required: invoiceDate, invoiceDueDate, orders[])
+- POST /order — create order first (required: customer.id, orderDate, deliveryDate, orderLines[])
+- PUT /order/{id}/:invoice — create invoice from order (NOT POST, must be PUT with invoiceDate and invoiceDueDate in body)
 
 PAYMENTS:
 - POST /payment — register payment (required: amount, date, paymentType.id)
@@ -73,6 +73,9 @@ IMPORTANT CONVENTIONS:
 - References use { id: N } format, e.g. customer: { id: 123 }
 - Dates are "YYYY-MM-DD" strings
 - Auth: Basic with username "0" and session_token as password
+- Customer address uses "postalAddress" NOT "address" (which doesn't exist)
+- Employee does NOT have dateOfEmployment or employmentDate fields
+- Order REQUIRES orderDate field (YYYY-MM-DD)
 `;
 
 export async function runSwarmFallback(
