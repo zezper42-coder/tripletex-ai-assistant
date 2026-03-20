@@ -115,6 +115,17 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
     signals.push("department_keyword");
   }
 
+  // Add general data signals (useful for conflict resolution weighting)
+  if (EMAIL_RE.test(prompt) && !signals.includes("has_email")) {
+    signals.push("has_email");
+  }
+  if (ORG_NR_RE.test(prompt) && !signals.includes("has_org_number")) {
+    signals.push("has_org_number");
+  }
+  if (PHONE_RE.test(prompt)) {
+    signals.push("has_phone");
+  }
+
   if (likelyResource && likelyAction) {
     confidenceBoost += 0.1;
     signals.push("resource_and_action_matched");
