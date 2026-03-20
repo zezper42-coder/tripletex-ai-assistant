@@ -62,18 +62,42 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
     setError(null);
     setResponse(null);
 
+    const payload = {
+      tripletexApiUrl: apiUrl,
+      sessionToken,
+      iterations,
+      categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+      mockMode,
+    };
+
     try {
       const { data, error: fnError } = await supabase.functions.invoke("auto-train", {
-        body: {
-          tripletexApiUrl: apiUrl,
-          sessionToken,
-          iterations,
-          categories: selectedCategories.length > 0 ? selectedCategories : undefined,
-          mockMode,
-        },
+        body: payload,
       });
 
-      if (fnError) throw fnError;
+      if (fnError) {
+        const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auto-train`;
+        const fallbackResponse = await fetch(functionUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const fallbackData = await fallbackResponse.json().catch(() => null);
+        if (!fallbackResponse.ok) {
+          throw new Error(
+            fallbackData?.error || fnError.message || "Failed to send a request to the Edge Function"
+          );
+        }
+
+        setResponse(fallbackData as TrainResponse);
+        return;
+      }
+
       setResponse(data as TrainResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -175,7 +199,7 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3 text-center">
-                <p className="text-2xl font-bold text-green-600">{response.succeeded}</p>
+                <p className="text-2xl font-bold text-primary">{response.succeeded}</p>
                 <p className="text-xs text-muted-foreground">Passed</p>
               </CardContent>
             </Card>
@@ -187,7 +211,7 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{response.newSolutionsLearned}</p>
+                <p className="text-2xl font-bold text-primary">{response.newSolutionsLearned}</p>
                 <p className="text-xs text-muted-foreground">Learned</p>
               </CardContent>
             </Card>
@@ -214,10 +238,10 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
                         <Badge variant="secondary" className="text-xs">{r.language}</Badge>
                         <span className="text-xs text-muted-foreground">{r.duration}ms</span>
                         {r.swarmUsed && (
-                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">swarm</Badge>
+                          <Badge variant="outline" className="text-xs">swarm</Badge>
                         )}
                         {r.solutionLearned && (
-                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">learned</Badge>
+                          <Badge variant="secondary" className="text-xs">learned</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{r.task}</p>
