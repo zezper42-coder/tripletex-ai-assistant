@@ -129,6 +129,22 @@ export class TripletexClient {
     return res;
   }
 
+  /**
+   * PUT with automatic 422 retry: strips invalid fields and retries once.
+   */
+  async putWithRetry(endpoint: string, body: Record<string, unknown>): Promise<{ status: number; data: unknown }> {
+    const res = await this.put(endpoint, body);
+    if (res.status === 422) {
+      const badFields = extractValidationFields(res.data);
+      if (badFields.length > 0) {
+        this.logger.warn(`422 retry (PUT): stripping fields [${badFields.join(", ")}]`);
+        const cleaned = stripFields(body, badFields);
+        return this.put(endpoint, cleaned);
+      }
+    }
+    return res;
+  }
+
   put(endpoint: string, body: unknown) {
     return this.request("PUT", endpoint, { body });
   }
