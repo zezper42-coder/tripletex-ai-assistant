@@ -274,12 +274,12 @@ export async function executeInvoiceCreate(
     orderLines.push(line);
   }
 
+  stepNum++;
   const orderBody: Record<string, unknown> = {
     customer: { id: customerId },
     deliveryDate: inv.invoiceDate,
     orderDate: inv.invoiceDate,
     orderLines,
-    // TODO: receiver may be required in some Tripletex configs
   };
 
   const orderStep: ExecutionStep = {
