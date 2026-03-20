@@ -1,4 +1,4 @@
-// Agent Swarm — GPT-5.4 dynamic fallback for failed or unsupported tasks
+// Agent Swarm — LLM dynamic fallback for failed or unsupported tasks
 
 import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
