@@ -130,7 +130,7 @@ export async function runSwarmFallback(
       .map(r => `Step ${r.stepNumber}: HTTP ${r.statusCode} — ${r.error || JSON.stringify(r.data).substring(0, 500)}`)
       .join("\n");
 
-    const retryPlan = await generateSwarmPlan(parsed, retryError, failureContext, openaiKey, swarmLogger);
+    const retryPlan = await generateSwarmPlan(parsed, retryError, failureContext, gatewayKey, swarmLogger);
     if (retryPlan) {
       const retryResults = await executeplan(retryPlan, client, swarmLogger);
       const retrySuccess = retryResults.every(r => r.success);

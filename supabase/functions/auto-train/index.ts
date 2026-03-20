@@ -154,7 +154,7 @@ serve(async (req) => {
 
       let taskText = "";
       try {
-        taskText = await generateTask(openaiKey, resourceType, intent, language);
+        taskText = await generateTask(gatewayKey, resourceType, intent, language);
       } catch (err) {
         console.error(`[auto-train] Task generation failed:`, err);
         results.push({
