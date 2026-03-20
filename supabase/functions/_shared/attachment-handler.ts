@@ -68,9 +68,9 @@ async function extractWithVision(
 ): Promise<string | undefined> {
   logger.info(`Attempting vision extraction for ${att.filename}`);
 
-  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!gatewayKey) {
-    logger.warn("LOVABLE_API_KEY not set, skipping vision extraction");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) {
+    logger.warn("OPENAI_API_KEY not set, skipping vision extraction");
     return undefined;
   }
 
@@ -82,14 +82,14 @@ async function extractWithVision(
 
   if (!imageContent) return undefined;
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${gatewayKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3.1-pro-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "user",

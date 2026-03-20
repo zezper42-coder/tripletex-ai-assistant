@@ -11,8 +11,8 @@ import { VatTypeLookup } from "./vat-lookup.ts";
 
 const MAX_ITERATIONS = 20;
 const TIMEOUT_MS = 240_000; // 4 min safety margin (competition limit is 5 min)
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-2.5-flash";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL = "gpt-4o";
 
 const TOOLS = [
   {
@@ -395,7 +395,7 @@ async function callLLM(
 ): Promise<{ content?: string; tool_calls?: ToolCall[] }> {
   const start = Date.now();
 
-  const response = await fetch(GATEWAY_URL, {
+  const response = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
