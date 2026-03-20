@@ -27,6 +27,7 @@ export function getMockResult(taskPrompt: string): PipelineResult {
       .some((kw) => lower.includes(kw));
 
   if (isTravelDelete) return buildMockTravelExpenseDelete();
+  if (isInvoice) return buildMockInvoice();
   if (isEmployee) return buildMockEmployee();
   if (isProduct) return buildMockProduct();
   if (isProject) return buildMockProject();

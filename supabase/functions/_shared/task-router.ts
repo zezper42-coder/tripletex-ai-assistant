@@ -40,7 +40,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   product_create: executeProductCreate,
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
-  // TODO: invoice_create
+  invoice_create: executeInvoiceCreate,
   // TODO: department_create
   // TODO: travel_expense_create
   // TODO: payment_create
