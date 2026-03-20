@@ -58,8 +58,8 @@ Deno.test("heuristics: org number boosts confidence", () => {
 Deno.test("router: resolves known task types", () => {
   assertEquals(resolveTaskType("create", "customer"), "customer_create");
   assertEquals(resolveTaskType("create", "invoice"), "invoice_create");
-  // Note: router key uses "travel_expense" not "travelExpense"
-  assertEquals(resolveTaskType("delete", "travelExpense"), "unknown"); // travelExpense != travel_expense
+  // travelExpense is aliased to travel_expense in router
+  assertEquals(resolveTaskType("delete", "travelExpense"), "travel_expense_delete");
   assertEquals(resolveTaskType("create", "creditNote"), "creditNote_create");
   assertEquals(resolveTaskType("create", "payment"), "payment_create");
 });
