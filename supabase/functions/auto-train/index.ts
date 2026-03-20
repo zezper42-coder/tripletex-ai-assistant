@@ -119,12 +119,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!lovableKey) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // gatewayKey already checked above
 
     if (!mockMode && !sessionToken) {
       return new Response(JSON.stringify({ error: "sessionToken required when not in mockMode" }), {
