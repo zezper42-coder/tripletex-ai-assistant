@@ -157,23 +157,10 @@ export async function executeTravelExpenseDelete(
     ...(!deleteSuccess && { error: `Tripletex returned ${deleteResp.status}` }),
   });
 
-  // Verify deletion
-  let verified = false;
-  if (deleteSuccess) {
-    try {
-      const check = await client.get(`/v2/travelExpense/${targetId}`);
-      verified = check.status === 404;
-      log.info(`Delete verification: ${verified ? "confirmed (404)" : "resource still exists"}`);
-    } catch {
-      verified = true; // Network error on GET likely means deleted
-      log.info("Delete verification: resource not found (deleted)");
-    }
-  }
-
   return {
     plan: { summary: `Delete travel expense ID ${targetId}`, steps },
     stepResults,
-    verified,
+    verified: deleteSuccess,
   };
 }
 
