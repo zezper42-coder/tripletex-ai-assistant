@@ -4,7 +4,9 @@ import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "./types.ts";
 import { executeCustomerCreate } from "./executors/customer-executor.ts";
+import { executeCustomerUpdate } from "./executors/customer-update-executor.ts";
 import { executeEmployeeCreate } from "./executors/employee-executor.ts";
+import { executeEmployeeUpdate } from "./executors/employee-update-executor.ts";
 import { executeProductCreate } from "./executors/product-executor.ts";
 import { executeProjectCreate } from "./executors/project-executor.ts";
 import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
@@ -13,6 +15,8 @@ import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
 import { executeDepartmentCreate } from "./executors/department-executor.ts";
 import { executeCreditNoteCreate } from "./executors/credit-note-executor.ts";
+import { executeSupplierCreate } from "./executors/supplier-executor.ts";
+import { executeContactCreate } from "./executors/contact-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -22,7 +26,9 @@ export interface ExecutorResult {
 
 export type TaskType =
   | "customer_create"
+  | "customer_update"
   | "employee_create"
+  | "employee_update"
   | "product_create"
   | "invoice_create"
   | "project_create"
@@ -32,6 +38,8 @@ export type TaskType =
   | "travel_expense_update"
   | "payment_create"
   | "creditNote_create"
+  | "supplier_create"
+  | "contact_create"
   | "unknown";
 
 type ExecutorFn = (
@@ -42,7 +50,9 @@ type ExecutorFn = (
 
 const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   customer_create: executeCustomerCreate,
+  customer_update: executeCustomerUpdate,
   employee_create: executeEmployeeCreate,
+  employee_update: executeEmployeeUpdate,
   product_create: executeProductCreate,
   project_create: executeProjectCreate,
   travel_expense_delete: executeTravelExpenseDelete,
@@ -51,6 +61,8 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   payment_create: executePaymentCreate,
   department_create: executeDepartmentCreate,
   creditNote_create: executeCreditNoteCreate,
+  supplier_create: executeSupplierCreate,
+  contact_create: executeContactCreate,
 };
 
 // Normalize camelCase resource types to snake_case for executor lookup
