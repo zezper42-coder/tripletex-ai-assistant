@@ -51,16 +51,21 @@ export async function executeCustomerCreate(
   if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
   if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
   if (normalizedFields.invoiceEmail) body.invoiceEmail = normalizedFields.invoiceEmail;
-  if (url) body.url = url;
+  if (url) body.website = url;
 
-  // Add postal address if provided
+  // Add postal address if provided (Tripletex uses postalAddress, NOT address)
   if (address || postalCode || city || country) {
-    body.postalAddress = {
-      ...(address && { addressLine1: address }),
-      ...(postalCode && { postalCode }),
-      ...(city && { city }),
-      ...(country && { country: { name: country } }),
-    };
+    const addressObj: Record<string, unknown> = {};
+    if (address) addressObj.addressLine1 = address;
+    if (postalCode) addressObj.postalCode = postalCode;
+    if (city) addressObj.city = city;
+    if (country) {
+      // Norway = country ID 161
+      const countryLower = String(country).toLowerCase();
+      const isNorway = ["norge", "norway", "no", "nor"].includes(countryLower);
+      addressObj.country = { id: isNorway ? 161 : 0 };
+    }
+    body.postalAddress = addressObj;
   }
 
   // Resolve account manager if specified

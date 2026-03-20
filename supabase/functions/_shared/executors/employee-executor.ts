@@ -148,7 +148,7 @@ export async function executeEmployeeCreate(
     });
 
     const empStart = Date.now();
-    const empRes = await client.postWithRetry("/v2/employment", employmentBody);
+    const empRes = await client.postWithRetry("/v2/employee/employment", employmentBody);
     stepResults.push({
       stepNumber: stepNum,
       success: empRes.status >= 200 && empRes.status < 300,
