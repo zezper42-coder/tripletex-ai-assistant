@@ -89,7 +89,7 @@ async function extractWithVision(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o",
+      model: "o3",
       messages: [
         {
           role: "user",
