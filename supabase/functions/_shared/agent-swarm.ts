@@ -13,7 +13,7 @@ Tripletex REST API v2 — Key endpoints:
 
 EMPLOYEES:
 - GET /employee?firstName=X&lastName=Y — search employees
-- POST /employee — create employee (required: firstName, lastName)
+- POST /employee — create employee (required: firstName, lastName, userType: "STANDARD"). Do NOT include dateOfEmployment or employmentDate — those fields do not exist.
 - PUT /employee/{id} — update employee (send full object with version)
 - PUT /employee/{id}/entitlement — set roles (e.g. all_administrator)
 
