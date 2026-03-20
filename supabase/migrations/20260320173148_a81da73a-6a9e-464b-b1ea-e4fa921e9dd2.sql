@@ -1,0 +1,1 @@
+DELETE FROM learned_solutions;
