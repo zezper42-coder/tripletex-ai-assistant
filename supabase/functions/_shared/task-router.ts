@@ -8,6 +8,7 @@ import { executeEmployeeCreate } from "./executors/employee-executor.ts";
 import { executeProductCreate } from "./executors/product-executor.ts";
 import { executeProjectCreate } from "./executors/project-executor.ts";
 import { executeTravelExpenseDelete } from "./executors/travel-expense-executor.ts";
+import { executeTravelExpenseCreate } from "./executors/travel-expense-create-executor.ts";
 import { executeInvoiceCreate } from "./executors/invoice-executor.ts";
 import { executePaymentCreate } from "./executors/payment-executor.ts";
 import { executeDepartmentCreate } from "./executors/department-executor.ts";
