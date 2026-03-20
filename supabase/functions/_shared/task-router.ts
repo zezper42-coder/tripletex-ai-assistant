@@ -31,6 +31,7 @@ export type TaskType =
   | "travel_expense_delete"
   | "travel_expense_update"
   | "payment_create"
+  | "creditNote_create"
   | "unknown";
 
 type ExecutorFn = (
