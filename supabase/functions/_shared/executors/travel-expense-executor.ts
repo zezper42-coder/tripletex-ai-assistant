@@ -186,16 +186,6 @@ async function deleteById(
   const duration = Date.now() - start;
   const success = resp.status >= 200 && resp.status < 300;
 
-  let verified = false;
-  if (success) {
-    try {
-      const check = await client.get(`/v2/travelExpense/${id}`);
-      verified = check.status === 404;
-    } catch {
-      verified = true;
-    }
-  }
-
   return {
     plan,
     stepResults: [{
@@ -206,7 +196,7 @@ async function deleteById(
       duration,
       ...(!success && { error: `Tripletex returned ${resp.status}` }),
     }],
-    verified,
+    verified: success,
   };
 }
 

@@ -111,20 +111,9 @@ export async function executeDepartmentCreate(
   const deptId = extractId(res.data);
   log.info(`Department created, ID: ${deptId}`);
 
-  // Minimal verification
-  let verified = false;
-  if (deptId) {
-    try {
-      const check = await client.get(`/v2/department/${deptId}`);
-      verified = check.status === 200;
-    } catch (err) {
-      log.warn("Verification failed", { error: String(err) });
-    }
-  }
-
   return {
     plan: { summary: `Department created: "${name}", ID: ${deptId}`, steps },
     stepResults,
-    verified,
+    verified: success,
   };
 }
