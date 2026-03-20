@@ -1,7 +1,7 @@
 import { Logger } from "./logger.ts";
 import { ParsedTask, ExecutionPlan, ExecutionStep } from "./types.ts";
 
-const LOVABLE_AI_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 // Endpoint mapping for Tripletex API v2
 const RESOURCE_ENDPOINTS: Record<string, string> = {
