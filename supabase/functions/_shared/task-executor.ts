@@ -24,9 +24,19 @@ export async function executeplan(
         body = resolveDependencies(body, step.dependsOn, resolvedValues, logger);
       }
 
-      const response = await client.request(step.method, step.endpoint, {
+      // Resolve template variables in endpoint like /v2/order/{id}/:invoice
+      let endpoint = step.endpoint;
+      endpoint = resolveEndpointTemplates(endpoint, step, resolvedValues, logger);
+
+      // Also resolve queryParams templates
+      let queryParams = step.queryParams;
+      if (queryParams) {
+        queryParams = resolveQueryParamTemplates(queryParams, resolvedValues);
+      }
+
+      const response = await client.request(step.method, endpoint, {
         body,
-        queryParams: step.queryParams,
+        queryParams,
       });
 
       const duration = Date.now() - start;
