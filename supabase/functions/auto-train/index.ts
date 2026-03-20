@@ -76,7 +76,7 @@ async function generateTask(
         { role: "user", content: `Generate a ${intent} task for ${resourceType} in ${language}.` },
       ],
       temperature: 1.0,
-      max_tokens: 500,
+      max_completion_tokens: 500,
     }),
   });
 
