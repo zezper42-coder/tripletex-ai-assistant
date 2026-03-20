@@ -68,6 +68,19 @@ export class TripletexClient {
           duration,
         });
 
+        // Extract Tripletex error details for 4xx/5xx responses
+        if (response.status >= 400 && data && typeof data === "object") {
+          const errObj = data as Record<string, unknown>;
+          const errDetails: Record<string, unknown> = {};
+          if (errObj.message) errDetails.message = errObj.message;
+          if (errObj.developerMessage) errDetails.developerMessage = errObj.developerMessage;
+          if (errObj.validationMessages) errDetails.validationMessages = errObj.validationMessages;
+          if (errObj.code) errDetails.code = errObj.code;
+          if (Object.keys(errDetails).length > 0) {
+            this.logger.warn(`Tripletex error details`, { endpoint, ...errDetails });
+          }
+        }
+
         if (response.status >= 500 && attempt < retries) {
           const delay = Math.pow(2, attempt) * 500;
           this.logger.warn(`Retrying in ${delay}ms (attempt ${attempt + 1})`);

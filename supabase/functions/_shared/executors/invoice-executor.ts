@@ -167,7 +167,7 @@ export async function executeInvoiceCreate(
   steps.push(searchStep);
 
   const searchStart = Date.now();
-  const searchRes = await client.get("/v2/customer", { name: inv.customerName! });
+  const searchRes = await client.get("/v2/customer", { name: inv.customerName!, fields: "*" });
   const searchDuration = Date.now() - searchStart;
 
   stepResults.push({

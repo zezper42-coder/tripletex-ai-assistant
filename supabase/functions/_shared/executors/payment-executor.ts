@@ -142,7 +142,7 @@ export async function executePaymentCreate(
 
     log.info("Searching for invoice", { searchParams });
     const start = Date.now();
-    const res = await client.get("/v2/invoice", searchParams);
+    const res = await client.get("/v2/invoice", { ...searchParams, fields: "*" });
     const duration = Date.now() - start;
 
     stepResults.push({
@@ -206,7 +206,7 @@ export async function executePaymentCreate(
     });
 
     const start = Date.now();
-    const res = await client.get(`/v2/invoice/${invoiceId}`);
+    const res = await client.get(`/v2/invoice/${invoiceId}`, { fields: "*" });
     const duration = Date.now() - start;
 
     stepResults.push({
