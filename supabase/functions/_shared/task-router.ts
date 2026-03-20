@@ -17,6 +17,7 @@ import { executeDepartmentCreate } from "./executors/department-executor.ts";
 import { executeCreditNoteCreate } from "./executors/credit-note-executor.ts";
 import { executeSupplierCreate } from "./executors/supplier-executor.ts";
 import { executeContactCreate } from "./executors/contact-executor.ts";
+import { executeVoucherCreate } from "./executors/voucher-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
