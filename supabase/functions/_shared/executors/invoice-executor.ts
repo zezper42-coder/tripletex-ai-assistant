@@ -321,94 +321,39 @@ export async function executeInvoiceCreate(
   }
   log.info(`Created order ID: ${orderId}`);
 
-  // ── Step 3: Create invoice from order ──
+  // ── Step 3: Create invoice from order (using compat helper) ──
 
   stepNum++;
-  const invoiceBody: Record<string, unknown> = {
-    invoiceDate: inv.invoiceDate,
-    invoiceDueDate: inv.dueDate,
-    // TODO: confirm if Tripletex uses orderId or orders array
-    orders: [{ id: orderId }],
-    ...(inv.comment ? { comment: inv.comment } : {}),
-  };
-
-  // Tripletex invoice creation endpoint — uses :invoice action on order
-  // Alternative: POST /v2/invoice with orders reference
-  const invoiceStep: ExecutionStep = {
+  steps.push({
     stepNumber: stepNum,
-    description: `PUT /v2/order/${orderId}/:invoice — create invoice from order`,
+    description: `Invoice creation from order ${orderId} (compat variants)`,
     method: "PUT",
     endpoint: `/v2/order/${orderId}/:invoice`,
     body: { invoiceDate: inv.invoiceDate, invoiceDueDate: inv.dueDate },
     resultKey: "invoiceId",
-  };
-  steps.push(invoiceStep);
-
-  log.info("Creating invoice from order", { orderId });
-  const invoiceStart = Date.now();
-  const invoiceRes = await client.put(`/v2/order/${orderId}/:invoice`, {
-    invoiceDate: inv.invoiceDate,
-    invoiceDueDate: inv.dueDate,
   });
-  const invoiceDuration = Date.now() - invoiceStart;
-  const invoiceSuccess = invoiceRes.status >= 200 && invoiceRes.status < 300;
+
+  log.info("Creating invoice from order via compat helper", { orderId });
+  const invoiceResult = await tryInvoiceCreation(
+    client, logger, orderId, customerId!,
+    inv.invoiceDate, inv.dueDate, inv.comment,
+  );
 
   stepResults.push({
     stepNumber: stepNum,
-    success: invoiceSuccess,
-    statusCode: invoiceRes.status,
-    data: invoiceRes.data,
-    duration: invoiceDuration,
-    ...(!invoiceSuccess && { error: `Invoice creation failed: ${invoiceRes.status}` }),
+    success: invoiceResult.success,
+    statusCode: invoiceResult.status,
+    data: invoiceResult.data,
+    duration: 0,
+    ...(!invoiceResult.success && { error: `Invoice creation failed via ${invoiceResult.variant}` }),
   });
 
-  if (!invoiceSuccess) {
-    // Fallback: try POST /v2/invoice directly
-    log.warn("Order-to-invoice failed, trying direct POST /v2/invoice");
-    stepNum++;
-    const directBody = {
-      customer: { id: customerId },
-      invoiceDate: inv.invoiceDate,
-      invoiceDueDate: inv.dueDate,
-      orders: [{ id: orderId }],
-      ...(inv.comment ? { comment: inv.comment } : {}),
-    };
-
-    const directStep: ExecutionStep = {
-      stepNumber: stepNum,
-      description: `POST /v2/invoice — direct invoice creation (fallback)`,
-      method: "POST",
-      endpoint: "/v2/invoice",
-      body: directBody,
-      resultKey: "invoiceId",
-    };
-    steps.push(directStep);
-
-    const directStart = Date.now();
-    const directRes = await client.post("/v2/invoice", directBody);
-    const directDuration = Date.now() - directStart;
-    const directSuccess = directRes.status >= 200 && directRes.status < 300;
-
-    stepResults.push({
-      stepNumber: stepNum,
-      success: directSuccess,
-      statusCode: directRes.status,
-      data: directRes.data,
-      duration: directDuration,
-      ...(!directSuccess && { error: `Direct invoice creation also failed: ${directRes.status}` }),
-    });
-
-    if (!directSuccess) {
-      return { plan: { summary: "Invoice creation failed at both order-to-invoice and direct paths", steps }, stepResults, verified: false };
-    }
-
-    const invoiceId = extractId(directRes.data);
-    log.info(`Invoice created via direct path, ID: ${invoiceId}`);
-    return { plan: { summary: `Invoice created (direct) for ${inv.customerName}, ID: ${invoiceId}`, steps }, stepResults, verified: true };
+  if (!invoiceResult.success) {
+    return { plan: { summary: `Invoice creation failed: ${invoiceResult.variant}`, steps }, stepResults, verified: false };
   }
 
-  const invoiceId = extractId(invoiceRes.data);
-  log.info(`Invoice created from order, ID: ${invoiceId}`);
+  const invoiceId = extractId(invoiceResult.data as Record<string, unknown>);
+  log.info(`Invoice created via ${invoiceResult.variant}, ID: ${invoiceId}`);
 
   return {
     plan: { summary: `Invoice created for ${inv.customerName}, order ${orderId} → invoice ${invoiceId}`, steps },
