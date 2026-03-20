@@ -62,8 +62,8 @@ export async function executeCreditNoteCreate(
       logger.warn("Ambiguous invoice match", { invoiceNumber, count: candidates.length });
       return { plan: { summary: `Ambiguous: ${candidates.length} invoices match number ${invoiceNumber}`, steps }, stepResults, verified: false };
     }
-    resolvedInvoiceId = candidates[0].id;
-    invoiceTotal = candidates[0].amount ?? candidates[0].totalAmount ?? null;
+    resolvedInvoiceId = Number(candidates[0].id);
+    invoiceTotal = Number(candidates[0].amount ?? candidates[0].totalAmount ?? 0) || null;
   } else if (customerName) {
     stepNum++;
     const desc = `GET /v2/invoice — search by customer "${customerName}"`;
