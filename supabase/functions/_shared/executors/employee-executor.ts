@@ -53,10 +53,31 @@ export async function executeEmployeeCreate(
     return failedResult(errors, log);
   }
 
+  // Look up department — Tripletex requires department.id on employee creation
+  let departmentId: number | undefined;
+  const deptField = (fields.department ?? fields.avdeling ?? fields.departmentId) as string | number | undefined;
+  if (deptField) {
+    // If department specified, try to find it
+    const deptSearch = await client.get("/v2/department", { name: String(deptField), count: "1", fields: "id,name" });
+    if (deptSearch.status === 200) {
+      const vals = ((deptSearch.data as any)?.values ?? []) as Array<{ id: number }>;
+      if (vals.length > 0) departmentId = vals[0].id;
+    }
+  }
+  if (!departmentId) {
+    // Fall back to first available department
+    const deptList = await client.get("/v2/department", { count: "1", fields: "id" });
+    if (deptList.status === 200) {
+      const vals = ((deptList.data as any)?.values ?? []) as Array<{ id: number }>;
+      if (vals.length > 0) departmentId = vals[0].id;
+    }
+  }
+
   const body: Record<string, unknown> = {
     firstName: normalizedFields.firstName,
     lastName: normalizedFields.lastName,
     userType: "STANDARD",
+    ...(departmentId && { department: { id: departmentId } }),
   };
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumberMobile) body.phoneNumberMobile = normalizedFields.phoneNumberMobile;
