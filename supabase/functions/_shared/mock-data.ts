@@ -188,3 +188,27 @@ function buildMockInvoice(): PipelineResult {
     verificationPassed: true, logs: [], duration: 200,
   };
 }
+
+function buildMockPayment(): PipelineResult {
+  const parsed: ParsedTask = {
+    language: "en", normalizedPrompt: "Register payment for invoice 10030",
+    intent: "create", resourceType: "payment",
+    fields: { invoiceNumber: "10030", amount: 750, paymentDate: "2026-03-20", currency: "USD" },
+    dependencies: [], confidence: 0.90, notes: "Mock mode — payment executor path",
+  };
+  return {
+    status: "completed", language: "en", parsedTask: parsed,
+    executionPlan: {
+      summary: "Payment registered for invoice 90011, payment ID: 90020",
+      steps: [
+        { stepNumber: 1, description: 'GET /v2/invoice — search by number "10030"', method: "GET", endpoint: "/v2/invoice", queryParams: { invoiceNumber: "10030" }, resultKey: "invoiceSearch" },
+        { stepNumber: 2, description: 'POST /v2/payment — register payment', method: "POST", endpoint: "/v2/payment", resultKey: "paymentId" },
+      ],
+    },
+    stepResults: [
+      { stepNumber: 1, success: true, statusCode: 200, data: { values: [{ id: 90011, invoiceNumber: 10030, amount: 750 }] }, duration: 30 },
+      { stepNumber: 2, success: true, statusCode: 201, data: { value: { id: 90020 } }, duration: 35 },
+    ],
+    verificationPassed: true, logs: [], duration: 150,
+  };
+}
