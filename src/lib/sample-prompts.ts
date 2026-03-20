@@ -15,4 +15,11 @@ export const SAMPLE_PROMPTS: Record<string, string> = {
   // Travel expense deletion
   es_travel_delete: "Eliminar la nota de gastos de viaje del empleado Carlos García del 15 de marzo por 1500 NOK",
   fr_travel_delete: "Supprimer la note de frais de voyage de l'employé Pierre Dupont du 10 mars pour 2000 NOK",
+  // Invoice creation
+  nb_invoice: "Opprett en faktura til kunde Nordvik AS for konsulenttjenester, 10 timer à 1200 NOK",
+  en_invoice: "Create an invoice for customer Acme Corp for 5 hours of consulting at 150 USD each",
+  de_invoice: "Erstellen Sie eine Rechnung für Kunde Schmidt GmbH: 3 Stunden Beratung à 200 EUR",
+  es_invoice: "Crear una factura para el cliente Empresa SL por 2 servicios de consultoría a 500 EUR cada uno",
+  en_invoice_multi: "Invoice Globex Corp for: 10x Widget A at $50, 5x Widget B at $75, 2x Premium Support at $200",
+  nb_invoice_new_customer: "Lag faktura til ny kunde Fjordtech AS (post@fjordtech.no) for 20 timer rådgivning à 950 NOK",
 };
