@@ -123,7 +123,7 @@ export async function runSwarmFallback(
   const allSucceeded = stepResults.every(r => r.success);
 
   if (!allSucceeded) {
-    // One retry: send errors back to GPT-5.4
+    // One retry: send errors back to LLM
     swarmLogger.info("First swarm attempt failed, retrying with error feedback");
     const retryError = stepResults
       .filter(r => !r.success)
