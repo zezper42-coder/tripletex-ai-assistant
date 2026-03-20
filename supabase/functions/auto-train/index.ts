@@ -144,14 +144,14 @@ async function generateTask(
     .replace("{language}", language) + uniquenessClause;
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-pro-preview",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: prompt },
           {
