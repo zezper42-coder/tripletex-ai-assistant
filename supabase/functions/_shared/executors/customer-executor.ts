@@ -16,10 +16,13 @@ export async function executeCustomerCreate(
 
   // Normalize field names
   const name = (fields.name ?? fields.customerName ?? fields.companyName) as string | undefined;
-  const email = (fields.email ?? fields.emailAddress) as string | undefined;
+  const email = (fields.email ?? fields.emailAddress ?? fields.epost) as string | undefined;
   const phone = (fields.phoneNumber ?? fields.phone ?? fields.telefon) as string | undefined;
   const orgNr = (fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer) as string | undefined;
   const invoiceEmail = (fields.invoiceEmail ?? fields.fakturaEpost) as string | undefined;
+  const address = (fields.address ?? fields.adresse) as string | undefined;
+  const postalCode = (fields.postalCode ?? fields.postnummer ?? fields.zipCode) as string | undefined;
+  const city = (fields.city ?? fields.poststed ?? fields.by) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     name,
@@ -45,6 +48,14 @@ export async function executeCustomerCreate(
   if (normalizedFields.phoneNumber) body.phoneNumber = normalizedFields.phoneNumber;
   if (normalizedFields.organizationNumber) body.organizationNumber = normalizedFields.organizationNumber;
   if (normalizedFields.invoiceEmail) body.invoiceEmail = normalizedFields.invoiceEmail;
+  // Add postal address if provided
+  if (address || postalCode || city) {
+    body.postalAddress = {
+      ...(address && { addressLine1: address }),
+      ...(postalCode && { postalCode }),
+      ...(city && { city }),
+    };
+  }
 
   const plan: ExecutionPlan = {
     summary: `Create customer: ${normalizedFields.name}`,
