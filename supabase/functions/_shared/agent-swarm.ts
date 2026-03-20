@@ -153,7 +153,7 @@ async function generateSwarmPlan(
   parsed: ParsedTask,
   errorContext: string,
   failureDetails: string,
-  openaiKey: string,
+  apiKey: string,
   logger: Logger
 ): Promise<ExecutionPlan | null> {
   const systemPrompt = `You are a Tripletex API expert agent. Your job is to solve accounting tasks by generating precise API call sequences.
