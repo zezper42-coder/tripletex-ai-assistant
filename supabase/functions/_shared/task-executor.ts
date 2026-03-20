@@ -24,9 +24,19 @@ export async function executeplan(
         body = resolveDependencies(body, step.dependsOn, resolvedValues, logger);
       }
 
-      const response = await client.request(step.method, step.endpoint, {
+      // Resolve template variables in endpoint like /v2/order/{id}/:invoice
+      let endpoint = step.endpoint;
+      endpoint = resolveEndpointTemplates(endpoint, step, resolvedValues, logger);
+
+      // Also resolve queryParams templates
+      let queryParams = step.queryParams;
+      if (queryParams) {
+        queryParams = resolveQueryParamTemplates(queryParams, resolvedValues);
+      }
+
+      const response = await client.request(step.method, endpoint, {
         body,
-        queryParams: step.queryParams,
+        queryParams,
       });
 
       const duration = Date.now() - start;
@@ -116,11 +126,74 @@ function setNestedValue(obj: Record<string, unknown>, path: string, value: unkno
 function extractId(data: unknown): number | string | undefined {
   if (!data || typeof data !== "object") return undefined;
   const d = data as Record<string, unknown>;
-  // Tripletex wraps responses in { value: { id: ... } }
+  // Tripletex wraps single responses in { value: { id: ... } }
   if (d.value && typeof d.value === "object") {
     const v = d.value as Record<string, unknown>;
     if (v.id !== undefined) return v.id as number;
   }
   if (d.id !== undefined) return d.id as number;
+  // Handle list responses: { values: [{ id: ... }, ...] } — return first match
+  if (Array.isArray(d.values) && d.values.length > 0) {
+    const first = d.values[0] as Record<string, unknown>;
+    if (first && first.id !== undefined) return first.id as number;
+  }
   return undefined;
+}
+
+/**
+ * Resolve template variables in endpoint paths like /v2/order/{id}/:invoice
+ * Maps {id} to the most recent resolved ID or to a specific step's result.
+ */
+function resolveEndpointTemplates(
+  endpoint: string,
+  step: ExecutionStep,
+  resolved: Record<string, unknown>,
+  logger: Logger
+): string {
+  // Replace {id} with the ID from the previous step's result
+  if (endpoint.includes("{id}")) {
+    // Look for the dependency that provides this ID
+    let resolvedId: unknown;
+    if (step.dependsOn) {
+      for (const dep of step.dependsOn) {
+        const val = resolved[dep.dependsOnField] ?? resolved[`step${dep.dependsOnStep}_${dep.dependsOnField}`];
+        if (val !== undefined) {
+          resolvedId = val;
+          break;
+        }
+      }
+    }
+    // Fallback: use the most recently stored resultKey
+    if (!resolvedId) {
+      const keys = Object.keys(resolved).filter(k => !k.endsWith("_full"));
+      if (keys.length > 0) {
+        resolvedId = resolved[keys[keys.length - 1]];
+      }
+    }
+    if (resolvedId) {
+      endpoint = endpoint.replace("{id}", String(resolvedId));
+      logger.info(`Resolved endpoint template: ${endpoint}`);
+    }
+  }
+  return endpoint;
+}
+
+/**
+ * Resolve template variables in query params
+ */
+function resolveQueryParamTemplates(
+  params: Record<string, string>,
+  resolved: Record<string, unknown>
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string" && value.startsWith("{") && value.endsWith("}")) {
+      const ref = value.slice(1, -1);
+      const resolvedVal = resolved[ref];
+      result[key] = resolvedVal !== undefined ? String(resolvedVal) : value;
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
 }
