@@ -1,112 +1,65 @@
 
 
-# Redesign: From Deterministic Executors to Agentic ReAct Loop
+# Diagnose og fiks: 0/8 score
 
-## Problem
-The current system uses hardcoded if/else routing (`task-router.ts` → 32 executor files) to pick pre-built API call sequences. This is brittle — any task variation the executor doesn't handle fails. The LLM is only used for parsing, not for deciding actions.
+## Problemet
 
-## New Architecture
+Logane viser tydeleg kva som gjekk galt:
 
-Replace the executor-based pipeline with a **ReAct agent loop** where the LLM:
-1. Reads the task + OpenAPI reference
-2. Decides which API call to make next
-3. Observes the result
-4. Decides the next action (or stops)
+1. **Agenten utforskar i staden for å utføre** — Den prøvde `GET /v2/swagger.json`, testa random salary-endepunkt, og brukte 15 iterasjonar utan å fullføre oppgåva.
+2. **Agenten fekk ei oppgåve den ikkje hadde info om** (salary) og gjekk i utforskingsmodus — prøving og feiling med 10+ 4xx-feil.
+3. **Systemprompten manglar viktige instruksjonar** — Den seier ikkje tydeleg "ALDRI utforsk/gjet — berre bruk det du veit".
+4. **Manglande endepunkt-dekning** — salary/payslip er ikkje i API-referansen, men agenten burde ha forstått at oppgåva handla om noko anna (t.d. employee med admin-rolle).
 
-```text
-┌─────────────────────────────────────────────┐
-│              AGENT LOOP                     │
-│                                             │
-│  Task + API Reference                       │
-│       ↓                                     │
-│  ┌─────────────┐                            │
-│  │  LLM THINK  │ ← observation from prev    │
-│  │  + DECIDE   │                            │
-│  └──────┬──────┘                            │
-│         ↓                                   │
-│   { action: "api_call",                     │
-│     method: "POST",                         │
-│     endpoint: "/v2/customer",               │
-│     body: {...} }                            │
-│         ↓                                   │
-│  ┌──────────────┐                           │
-│  │ EXECUTE CALL │ → TripletexClient         │
-│  └──────┬───────┘                           │
-│         ↓                                   │
-│   observation: { status: 201, data: {...} } │
-│         ↓                                   │
-│   Loop back to LLM THINK (max 10 iters)    │
-│         or                                  │
-│   { action: "done" } → return result        │
-└─────────────────────────────────────────────┘
+## Plan
+
+### 1. Forsterke system-prompten med anti-utforsking-reglar
+- Legg til: "ALDRI prøv å hente swagger.json eller utforske ukjende endepunkt"
+- Legg til: "Dersom du ikkje veit korleis du gjer noko, prøv med dei endepunkta du kjenner, eller kall done med ein forklaring"
+- Legg til: "Kvar feil (4xx) reduserer scoren. Planlegg FØR du kallar."
+- Legg til: "Aldri gjer meir enn 2 forsøk på same endepunkt"
+
+### 2. Utvide API-referansen med manglande endepunkt
+Legg til i `COMPACT_API_REFERENCE` og `SCHEMA_REFERENCE`:
+- Salary: `POST /salary/transaction`, `GET /salary/type`, `GET /salary/payslip` (basert på det vi ser i logane)
+- Company modules: `POST /company/salesmodules`
+- Employee entitlements: `PUT /employee/{id}/entitlement/:grantEntitlementsByTemplate`
+- Credit notes: `PUT /invoice/{id}/:createCreditNote`
+
+### 3. Forbetre agent-loop logikk
+- Legg til ein teller for 4xx-feil per endepunkt — stopp etter 2 forsøk på same endepunkt
+- Reduser `truncateData` grensa for å spare kontekstvindu
+- Legg til ein timeout-sjekk (maks 240s totalt) for å unngå 5-minutts timeout
+
+### 4. Filer som vert endra
+- `supabase/functions/_shared/agent-loop.ts` — Forsterka system-prompt, anti-utforsking, timeout
+- `supabase/functions/_shared/tripletex-api-reference.ts` — Utvida med salary, entitlements, modules
+- Deploy `solve` og `auto-train`
+
+## Tekniske detaljar
+
+**System-prompt tillegg:**
+```
+## CRITICAL EFFICIENCY RULES
+- Every 4xx error REDUCES your score. Plan before calling.
+- NEVER try to fetch swagger.json or discover endpoints.
+- NEVER make more than 2 attempts at the same endpoint.
+- ONLY use endpoints listed in this reference.
+- If unsure, use the closest known endpoint, don't explore.
+- Total time limit is 4 minutes. Work fast.
 ```
 
-## Implementation Plan
-
-### 1. Create `supabase/functions/_shared/agent-loop.ts` (new file)
-The core ReAct agent. Single function `runAgentLoop(task, client, logger)`:
-- System prompt contains the full `COMPACT_API_REFERENCE` + `SCHEMA_REFERENCE` + Tripletex conventions
-- Uses **tool calling** with two tools:
-  - `api_call(method, endpoint, body?, queryParams?)` — executes a Tripletex API request
-  - `done(summary)` — signals task completion
-- Loop: send messages to LLM → get tool call → execute → append observation → repeat
-- Max 10 iterations, safety timeout
-- Each iteration appends the API response as an observation message
-- Uses `google/gemini-3.1-pro-preview` model
-
-### 2. Rewrite `supabase/functions/_shared/agent-pipeline.ts`
-Simplify drastically. New flow:
-1. Process attachments (keep)
-2. Call `runAgentLoop(fullPrompt, client, logger)` directly — no parsing, no heuristics, no routing, no executor lookup
-3. Return result
-- Remove imports of: `parseTask`, `planExecution`, `runHeuristics`, `resolveTaskType`, `getExecutor`, `runSwarmFallback`, `findCachedSolution`, `saveSolution`
-- The agent IS the parser, planner, and executor all in one
-
-### 3. Save the full OpenAPI spec as a compressed reference
-- Update `tripletex-api-reference.ts` to include the complete `SCHEMA_REFERENCE` and `COMPACT_API_REFERENCE` in the agent's system prompt
-- No changes needed here — the existing reference is already comprehensive
-
-### 4. Keep existing infrastructure
-- `TripletexClient` — used by the agent loop to execute calls
-- `Logger` — used for structured logging
-- `types.ts` — keep `PipelineResult`, `StepResult`, etc.
-- `attachment-handler.ts` — still needed
-- `solve/index.ts` — no changes needed (calls `runPipeline`)
-
-### 5. Files that become unused (but can stay for now)
-- All 32 executor files in `executors/`
-- `task-router.ts`
-- `task-parser.ts`
-- `task-planner.ts`
-- `task-executor.ts`
-- `heuristics.ts`
-- `agent-swarm.ts`
-- `solution-cache.ts`
-- `task-verifier.ts`
-
-## Technical Details
-
-**Agent system prompt** will include:
-- Full API reference with all endpoints, required fields, field types
-- Tripletex conventions (postalAddress, {id} refs, query params for payments, etc.)
-- Instructions to think step-by-step, observe results, and self-correct on errors
-- Examples of multi-step workflows (create customer → create order → invoice)
-
-**Tool schema for `api_call`**:
-```json
-{
-  "name": "api_call",
-  "parameters": {
-    "method": "GET|POST|PUT|DELETE",
-    "endpoint": "/v2/...",
-    "body": { ... },
-    "queryParams": { ... },
-    "reasoning": "why this call"
-  }
+**Timeout-mekanisme i agent-loop:**
+```typescript
+const TIMEOUT_MS = 240_000; // 4 min safety margin
+if (Date.now() - loopStart > TIMEOUT_MS) {
+  // call done immediately
 }
 ```
 
-**Error recovery**: If an API call returns 4xx, the observation goes back to the LLM, which can adjust fields, try a different endpoint, or look up missing data — all dynamically without hardcoded retry logic.
-
-**Performance**: The agent loop adds ~1-3 LLM calls per task (think + act cycles). With Gemini 3.1 Pro this should complete within the 180s time limit. Simple tasks (create customer) will be 1-2 iterations. Complex tasks (invoice with payment) may take 3-5.
+**Feil-teller:**
+```typescript
+const endpointFailures = new Map<string, number>();
+// Skip endpoint if already failed 2+ times
+```
 
