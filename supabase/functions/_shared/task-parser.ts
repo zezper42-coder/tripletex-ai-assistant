@@ -55,7 +55,6 @@ Example: "Opprett kunde Firma AS med e-post a@b.no" →
         { role: "system", content: systemPrompt },
         { role: "user", content: taskPrompt },
       ],
-      temperature: 0,
     }),
   });
 
