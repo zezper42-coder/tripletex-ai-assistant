@@ -1,7 +1,8 @@
 import { Logger } from "./logger.ts";
 import { ParsedTask, Language, Intent, ResourceType } from "./types.ts";
 
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL = "o3";
 
 export async function parseTask(
   taskPrompt: string,
@@ -94,6 +95,10 @@ CONTACT:
   "firstName", "lastName", "email", "phoneNumber",
   "customerName" (linked customer)
 
+SUPPLIER:
+  "name" (REQUIRED), "email", "phoneNumber", "organizationNumber",
+  Address: "address" (street), "postalCode", "city", "country"
+
 CRITICAL RULES:
 1. "fields" MUST contain ALL data values from the task — do not omit anything.
 2. Use the EXACT field names listed above. Do not invent new names.
@@ -108,21 +113,23 @@ CRITICAL RULES:
 11. If someone should be "administrator" or "kontoadministrator", set "isAccountAdministrator": true.
 12. For travel expenses, "title" = the purpose/name of the trip.
 13. For products, "unit" = the unit of measurement mentioned (stk, kg, timer, etc.).
+14. If attachment data is provided below the task, merge ALL extracted data into the fields object.
+15. When both prompt text and attachment data exist, attachment data takes precedence for specific values (amounts, dates, line items).
 
 Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no, Storgata 1, 0123 Oslo)" →
 {"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","customerEmail":"a@b.no","address":"Storgata 1","postalCode":"0123","city":"Oslo","country":"Norge"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
 
-  const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!gatewayKey) throw new Error("LOVABLE_API_KEY is not configured");
+  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 
-  const response = await fetch(AI_GATEWAY_URL, {
+  const response = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${gatewayKey}`,
+      Authorization: `Bearer ${openaiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3.1-pro-preview",
+      model: MODEL,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: taskPrompt },
