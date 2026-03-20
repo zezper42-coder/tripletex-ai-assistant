@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { runPipeline } from "../_shared/agent-pipeline.ts";
 import { SolveRequest } from "../_shared/types.ts";
+import { getCompatDebugSummary } from "../_shared/tripletex-compat.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
