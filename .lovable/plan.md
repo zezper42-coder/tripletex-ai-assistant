@@ -1,53 +1,41 @@
 
 
-## Executor Coverage Summary
+## Fix Critical Bugs and Harden Against Tripletex API Docs
 
-### Implemented executors
-| Task Type | Executor | Status |
-|---|---|---|
-| `customer_create` | customer-executor.ts | ✅ |
-| `employee_create` | employee-executor.ts | ✅ |
-| `product_create` | product-executor.ts | ✅ |
-| `project_create` | project-executor.ts | ✅ |
-| `invoice_create` | invoice-executor.ts | ✅ |
-| `payment_create` | payment-executor.ts | ✅ |
-| `department_create` | department-executor.ts | ✅ |
-| `travel_expense_delete` | travel-expense-executor.ts | ✅ |
-| `travel_expense_create` | travel-expense-create-executor.ts | ✅ |
-| `credit_note_create` | credit-note-executor.ts | ✅ |
+The Tripletex API docs confirm response envelopes, auth, date formats, and endpoint patterns. Reviewing the codebase against these docs reveals one critical bug and several hardening opportunities.
 
-### Shared helpers
-| Helper | Purpose |
-|---|---|
-| `vat-lookup.ts` | Per-request cached VAT type resolution via GET /v2/ledger/vatType |
-| `tripletex-compat.ts` | Endpoint variant fallbacks + behavior confirmation registry |
+### Critical bug: `searchRes.ok` does not exist
 
-### Live Sandbox Verification Checklist
+In `credit-note-executor.ts`, the code uses `searchRes.ok` (lines 50, 56, 72) but `TripletexClient.request()` returns `{ status: number; data: unknown }` — there is no `.ok` property. This means `searchRes.ok` is always `undefined` (falsy), so **every invoice lookup by number or customer name silently fails**, making credit notes broken for all non-direct-ID cases.
 
-| Behavior | Status | Notes |
-|---|---|---|
-| POST /v2/customer | ✅ confirmed | Standard creation |
-| POST /v2/employee | ✅ confirmed | Standard creation |
-| POST /v2/product | ✅ confirmed | Standard creation |
-| POST /v2/product with vatType | ⚠️ unconfirmed_safe | vatType {id} object — omit if unknown |
-| POST /v2/department | ✅ confirmed | Standard creation |
-| GET /v2/ledger/vatType | ✅ confirmed | VAT type listing |
-| POST /v2/order | ✅ confirmed | Order as invoice precursor |
-| PUT /v2/order/{id}/:invoice | ⚠️ unconfirmed_safe | Primary invoice-from-order; needs invoiceDate+dueDate |
-| POST /v2/invoice (direct) | ⚠️ unconfirmed_safe | Fallback with orders ref |
-| orderLines.vatType required | 🔴 TODO | Some configs require vatType on every line |
-| order.receiver field | 🔴 TODO | Some configs require receiver name |
-| POST /v2/payment | 🔴 TODO | Payment endpoint; may need paymentType + account |
-| payment.voucher linkage | 🔴 TODO | May need different ref pattern |
-| PUT /v2/invoice/{id}/:createCreditNote | 🔴 TODO | Primary credit note path |
-| partial credit note body | 🔴 TODO | May need line-level adjustments |
-| POST /v2/travelExpense | ⚠️ unconfirmed_safe | Basic creation; cost lines may need separate POST |
-| travelExpense cost lines | 🔴 TODO | POST /v2/travelExpense/{id}/cost |
+### Changes
 
-### Remaining / future
-- `travel_expense_update` — not yet needed
-- Receipt/document attachment extraction enrichment
-- Employee role assignment via entitlements API
-- Credit note creation via negative-amount POST fallback
-- Correction/reversal workflows
-- customer_update / employee_update executors
+**1. Fix `credit-note-executor.ts` — replace `searchRes.ok` with status checks**
+- Replace `searchRes.ok` with `searchRes.status >= 200 && searchRes.status < 300` (3 occurrences)
+- Fix response envelope parsing: use `(searchRes.data as any)?.values` pattern consistently matching Tripletex `{ values: [...] }` envelope
+- Fix operator precedence bug on line 53: `searchRes.data?.values ?? searchRes.data?.value ? [...]` — the ternary binds wrong
+
+**2. Add `fields` query parameter to key GET requests**
+Per API docs, Tripletex requires explicit `fields` param to get full objects. Without it, responses may return only `{ id, url }`. Add `fields=*` to:
+- Invoice search in credit-note-executor and payment-executor
+- Employee search in travel-expense-create-executor
+- Customer search in invoice-executor
+
+**3. Add `version` field awareness for PUT operations**
+API docs state PUT requires a `version` field to prevent edit conflicts. The invoice and credit note executors use PUT (e.g., `PUT /v2/order/{id}/:invoice`). These action endpoints may not need version, but add a TODO note for live confirmation.
+
+**4. Handle Tripletex error envelope in client**
+When status >= 400, Tripletex returns `{ status, code, message, developerMessage, validationMessages }`. Extract and log `message` + `validationMessages` for better debug output.
+
+### Files to edit
+- `supabase/functions/_shared/executors/credit-note-executor.ts` — fix `.ok` bug, fix envelope parsing
+- `supabase/functions/_shared/tripletex-client.ts` — extract error details from 4xx responses
+- `supabase/functions/_shared/executors/payment-executor.ts` — add `fields=*` to invoice search
+- `supabase/functions/_shared/executors/invoice-executor.ts` — add `fields=*` to customer search
+- `supabase/functions/_shared/executors/travel-expense-create-executor.ts` — add `fields=*` to employee search
+
+### What this fixes
+- Credit note executor now actually works for invoice-number and customer-name lookups
+- Better error diagnostics from Tripletex 4xx responses
+- Correct response data extraction across all executors
+
