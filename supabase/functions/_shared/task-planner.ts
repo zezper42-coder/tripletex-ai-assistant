@@ -114,7 +114,7 @@ Return the plan using the create_plan function.`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-5",
+      model: "google/gemini-3.1-pro-preview",
       messages: [
         { role: "system", content: systemPrompt },
         {
