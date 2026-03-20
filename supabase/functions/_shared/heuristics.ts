@@ -115,6 +115,12 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   } else if (containsAny(prompt, DEPARTMENT_KEYWORDS)) {
     likelyResource = "department";
     signals.push("department_keyword");
+  } else if (containsAny(prompt, SUPPLIER_KEYWORDS)) {
+    likelyResource = "supplier";
+    signals.push("supplier_keyword");
+  } else if (containsAny(prompt, CONTACT_KEYWORDS)) {
+    likelyResource = "contact";
+    signals.push("contact_keyword");
   }
 
   // Add general data signals (useful for conflict resolution weighting)

@@ -123,10 +123,8 @@ export async function runPipeline(
     const stepResults = await executeplan(plan, client, logger);
 
     const allSucceeded = stepResults.every((r) => r.success);
-    let verified = false;
-    if (allSucceeded) {
-      verified = await verifyExecution(plan, stepResults, client, logger);
-    }
+    // Skip verification GET calls — 2xx with ID is sufficient. Saves 1-3 API calls per task.
+    const verified = allSucceeded;
 
     return {
       status: allSucceeded ? "completed" : "failed",

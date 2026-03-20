@@ -88,7 +88,15 @@ async function extractWithVision(
         {
           role: "user",
           content: [
-            { type: "text", text: "Extract ALL text, numbers, dates, names, amounts, addresses, email addresses, phone numbers, organization numbers, and any other structured data from this document/image. Return as structured key-value pairs." },
+            { type: "text", text: `Extract ALL structured data from this document/image. Return as JSON with these fields where applicable:
+- invoiceNumber, invoiceDate, dueDate
+- customerName, customerEmail, customerPhone, customerAddress, organizationNumber
+- supplierName, supplierEmail, supplierAddress
+- lines (array of {description, quantity, unitPrice, vatRate, amount})
+- totalAmount, totalVat, totalWithVat, currency
+- employeeName, travelDate, travelDestination, travelPurpose
+- any other relevant names, emails, phone numbers, dates, amounts
+Return ONLY valid JSON, no markdown.` },
             imageContent,
           ],
         },
