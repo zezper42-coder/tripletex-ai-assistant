@@ -111,6 +111,11 @@ You must call the parse_task function with your analysis.`;
   }
 
   const parsed: ParsedTask = JSON.parse(toolCall.function.arguments);
+  // Ensure fields is always an object (LLM sometimes omits it)
+  if (!parsed.fields || typeof parsed.fields !== "object") {
+    parsed.fields = {};
+    logger.warn("LLM omitted fields, defaulting to empty object");
+  }
   logger.info("Task parsed", {
     language: parsed.language,
     intent: parsed.intent,
