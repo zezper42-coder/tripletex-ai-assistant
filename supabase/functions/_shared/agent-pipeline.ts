@@ -1,4 +1,4 @@
-// Hardened agent pipeline with deterministic routing, heuristics, swarm fallback, and structured debug output
+// Hardened agent pipeline with deterministic routing, heuristics, swarm fallback, solution caching, and structured debug output
 
 import { Logger } from "./logger.ts";
 import { TripletexClient } from "./tripletex-client.ts";
@@ -11,6 +11,7 @@ import { getMockResult } from "./mock-data.ts";
 import { runHeuristics } from "./heuristics.ts";
 import { resolveTaskType, getExecutor } from "./task-router.ts";
 import { runSwarmFallback } from "./agent-swarm.ts";
+import { findCachedSolution, saveSolution } from "./solution-cache.ts";
 import { SolveRequest, PipelineResult } from "./types.ts";
 
 export async function runPipeline(
