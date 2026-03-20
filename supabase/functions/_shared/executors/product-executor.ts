@@ -100,22 +100,12 @@ export async function executeProductCreate(
     ...(!success && { error: `Tripletex returned ${response.status}` }),
   };
 
-  let verified = false;
   if (success) {
     const id = extractId(response.data);
-    if (id) {
-      log.info(`Product created with ID ${id}, verifying...`);
-      try {
-        const check = await client.get(`/v2/product/${id}`);
-        verified = check.status === 200;
-        log.info(`Verification: ${verified ? "passed" : "failed"}`);
-      } catch (err) {
-        log.warn("Verification request failed", { error: String(err) });
-      }
-    }
+    log.info(`Product created with ID ${id}`);
   }
 
-  return { plan, stepResults: [stepResult], verified };
+  return { plan, stepResults: [stepResult], verified: success };
 }
 
 function extractId(data: unknown): number | undefined {

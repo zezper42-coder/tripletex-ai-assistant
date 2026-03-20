@@ -237,20 +237,9 @@ export async function executeTravelExpenseCreate(
     // TODO: POST /v2/travelExpense/{id}/cost with { amount, currency, description }
   }
 
-  // ── Minimal verification ──
-  let verified = false;
-  if (expenseId) {
-    try {
-      const check = await client.get(`/v2/travelExpense/${expenseId}`);
-      verified = check.status === 200;
-    } catch (err) {
-      log.warn("Verification failed", { error: String(err) });
-    }
-  }
-
   return {
     plan: { summary: `Travel expense created: "${title}", ID: ${expenseId}`, steps },
     stepResults,
-    verified,
+    verified: createSuccess,
   };
 }

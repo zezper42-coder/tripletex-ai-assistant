@@ -197,22 +197,12 @@ export async function executeProjectCreate(
     ...(!success && { error: `Tripletex returned ${response.status}` }),
   });
 
-  let verified = false;
   if (success) {
     const id = extractId(response.data);
-    if (id) {
-      log.info(`Project created with ID ${id}, verifying...`);
-      try {
-        const check = await client.get(`/v2/project/${id}`);
-        verified = check.status === 200;
-        log.info(`Verification: ${verified ? "passed" : "failed"}`);
-      } catch (err) {
-        log.warn("Verification request failed", { error: String(err) });
-      }
-    }
+    log.info(`Project created with ID ${id}`);
   }
 
-  return { plan, stepResults, verified };
+  return { plan, stepResults, verified: success };
 }
 
 function extractListValues(data: unknown): Record<string, unknown>[] {

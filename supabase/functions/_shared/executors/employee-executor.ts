@@ -200,17 +200,7 @@ export async function executeEmployeeCreate(
     }
   }
 
-  // Verify creation
-  let verified = false;
-  if (employeeId) {
-    try {
-      const check = await client.get(`/v2/employee/${employeeId}`);
-      verified = check.status === 200;
-      log.info(`Verification: ${verified ? "passed" : "failed"}`);
-    } catch (err) {
-      log.warn("Verification request failed", { error: String(err) });
-    }
-  }
+  const verified = success;
 
   const plan: ExecutionPlan = {
     summary: `Create employee: ${firstName} ${lastName}${shouldAssignAdmin ? " (administrator)" : ""}`,

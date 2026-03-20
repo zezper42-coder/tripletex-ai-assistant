@@ -83,12 +83,12 @@ async function extractWithVision(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-5",
+      model: "google/gemini-2.5-flash",
       messages: [
         {
           role: "user",
           content: [
-            { type: "text", text: "Extract all text, numbers, and data from this document/image. Return structured content." },
+            { type: "text", text: "Extract ALL text, numbers, dates, names, amounts, addresses, email addresses, phone numbers, organization numbers, and any other structured data from this document/image. Return as structured key-value pairs." },
             imageContent,
           ],
         },
