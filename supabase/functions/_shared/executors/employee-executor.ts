@@ -1,4 +1,4 @@
-// Employee creation executor — deterministic, no LLM in execution path
+// Employee creation executor — deterministic, with admin role assignment
 
 import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
@@ -6,13 +6,22 @@ import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { validateEmployeeFields, ValidationError } from "../field-validation.ts";
 import { ExecutorResult } from "../task-router.ts";
 
-// TODO: Tripletex role assignment may require separate API calls after employee creation.
-// The Tripletex API v2 has /v2/employee/{id}/entitlement for role/permission management.
-// Need to confirm exact behavior for:
-//   - "administrator" role
-//   - "account administrator" role
-//   - standard employee (no special role)
-// For now, we capture the role in fields but don't attempt to assign it via API.
+const ADMIN_KEYWORDS = [
+  "administrator", "kontoadministrator", "account administrator",
+  "admin", "brukeradministrator", "user admin", "administrador",
+  "Kontoadministrator", "Administrator",
+];
+
+function isAdminRole(fields: Record<string, unknown>): boolean {
+  const role = String(fields.role ?? fields.stilling ?? fields.jobTitle ?? fields.stillingstittel ?? "").toLowerCase();
+  const isAdmin = fields.isAccountAdministrator ?? fields.isAdmin ?? fields.administrator;
+  if (isAdmin === true) return true;
+
+  // Also check the raw prompt notes for admin keywords
+  const notes = String(fields._notes ?? "").toLowerCase();
+
+  return ADMIN_KEYWORDS.some((kw) => role.includes(kw.toLowerCase()) || notes.includes(kw.toLowerCase()));
+}
 
 export async function executeEmployeeCreate(
   parsed: ParsedTask,
@@ -20,7 +29,11 @@ export async function executeEmployeeCreate(
   logger: Logger
 ): Promise<ExecutorResult> {
   const log = logger.child("executor:employee");
-  const fields = parsed.fields;
+  const fields = parsed.fields ?? {};
+
+  // Also check the original prompt for admin keywords
+  const promptLower = (parsed.normalizedPrompt ?? "").toLowerCase() + " " + (parsed.notes ?? "").toLowerCase();
+  const adminInPrompt = ADMIN_KEYWORDS.some((kw) => promptLower.includes(kw.toLowerCase()));
 
   // Normalize field names — handle split or combined name formats
   let firstName = (fields.firstName ?? fields.fornavn) as string | undefined;
@@ -30,13 +43,13 @@ export async function executeEmployeeCreate(
   if (!firstName && !lastName && fields.name) {
     const parts = String(fields.name).trim().split(/\s+/);
     firstName = parts[0];
-    lastName = parts.slice(1).join(" ") || parts[0]; // Tripletex requires lastName
+    lastName = parts.slice(1).join(" ") || parts[0];
   }
 
   const email = (fields.email ?? fields.emailAddress ?? fields.epost) as string | undefined;
-  const phone = (fields.phoneNumberMobile ?? fields.phone ?? fields.telefon ?? fields.mobil) as string | undefined;
-  const role = (fields.role ?? fields.stilling ?? fields.jobTitle ?? fields.stillingstittel) as string | undefined;
+  const phone = (fields.phoneNumberMobile ?? fields.phone ?? fields.telefon ?? fields.mobil ?? fields.phoneNumber) as string | undefined;
   const dateOfBirth = (fields.dateOfBirth ?? fields.fødselsdato) as string | undefined;
+  const startDate = (fields.startDate ?? fields.startdato) as string | undefined;
 
   const normalizedFields: Record<string, unknown> = {
     firstName,
@@ -53,11 +66,14 @@ export async function executeEmployeeCreate(
     return failedResult(errors, log);
   }
 
-  // Look up department — Tripletex requires department.id on employee creation
+  const steps: ExecutionPlan["steps"] = [];
+  const stepResults: StepResult[] = [];
+  let stepNum = 0;
+
+  // Look up department — Tripletex may require it
   let departmentId: number | undefined;
   const deptField = (fields.department ?? fields.avdeling ?? fields.departmentId) as string | number | undefined;
   if (deptField) {
-    // If department specified, try to find it
     const deptSearch = await client.get("/v2/department", { name: String(deptField), count: "1", fields: "id,name" });
     if (deptSearch.status === 200) {
       const vals = ((deptSearch.data as any)?.values ?? []) as Array<{ id: number }>;
@@ -65,7 +81,6 @@ export async function executeEmployeeCreate(
     }
   }
   if (!departmentId) {
-    // Fall back to first available department
     const deptList = await client.get("/v2/department", { count: "1", fields: "id" });
     if (deptList.status === 200) {
       const vals = ((deptList.data as any)?.values ?? []) as Array<{ id: number }>;
@@ -82,65 +97,127 @@ export async function executeEmployeeCreate(
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumberMobile) body.phoneNumberMobile = normalizedFields.phoneNumberMobile;
   if (normalizedFields.dateOfBirth) body.dateOfBirth = normalizedFields.dateOfBirth;
+  if (startDate) body.dateOfEmployment = startDate;
 
-  const plan: ExecutionPlan = {
-    summary: `Create employee: ${firstName} ${lastName}`,
-    steps: [
-      {
-        stepNumber: 1,
-        description: `POST /v2/employee — create "${firstName} ${lastName}"`,
-        method: "POST",
-        endpoint: "/v2/employee",
-        body,
-        resultKey: "employeeId",
-      },
-    ],
-  };
+  // Step 1: Create employee
+  stepNum++;
+  steps.push({
+    stepNumber: stepNum,
+    description: `POST /v2/employee — create "${firstName} ${lastName}"`,
+    method: "POST",
+    endpoint: "/v2/employee",
+    body,
+    resultKey: "employeeId",
+  });
 
-  // TODO: If role is "administrator" or "kontoadministrator", add a step 2 for role assignment
-  // via POST /v2/employee/{id}/entitlement or similar endpoint.
-  if (role) {
-    log.info(`Role detected: "${role}" — stored but not yet assigned via API (TODO)`);
-    plan.summary += ` (role: ${role})`;
-  }
-
-  log.info("Executing employee creation", { body, role });
+  log.info("Executing employee creation", { body, adminDetected: isAdminRole(fields) || adminInPrompt });
   const start = Date.now();
-
   const response = await client.post("/v2/employee", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 
-  const stepResult: StepResult = {
-    stepNumber: 1,
+  stepResults.push({
+    stepNumber: stepNum,
     success,
     statusCode: response.status,
     data: response.data,
     duration,
     ...(!success && { error: `Tripletex returned ${response.status}` }),
-  };
+  });
 
-  // Verify creation if successful
-  let verified = false;
-  if (success) {
-    const id = extractId(response.data);
-    if (id) {
-      log.info(`Employee created with ID ${id}, verifying...`);
-      try {
-        const check = await client.get(`/v2/employee/${id}`);
-        verified = check.status === 200;
-        log.info(`Verification: ${verified ? "passed" : "failed"}`);
-      } catch (err) {
-        log.warn("Verification request failed", { error: String(err) });
+  if (!success) {
+    return {
+      plan: { summary: `Employee creation failed: ${response.status}`, steps },
+      stepResults,
+      verified: false,
+    };
+  }
+
+  const employeeId = extractId(response.data);
+  log.info(`Employee created with ID ${employeeId}`);
+
+  // Step 2: Assign admin role if detected
+  const shouldAssignAdmin = isAdminRole(fields) || adminInPrompt;
+
+  if (shouldAssignAdmin && employeeId) {
+    log.info("Assigning administrator role to employee");
+    stepNum++;
+
+    // Try multiple approaches for admin role assignment:
+
+    // Approach 1: Grant entitlements by template
+    const grantUrl = `/v2/employee/entitlement/:grantEntitlementsByTemplate`;
+    steps.push({
+      stepNumber: stepNum,
+      description: `PUT ${grantUrl} — grant admin entitlements`,
+      method: "PUT",
+      endpoint: grantUrl,
+      body: {},
+      resultKey: "entitlementGrant",
+    });
+
+    const grantStart = Date.now();
+    const grantRes = await client.request("PUT", grantUrl, {
+      queryParams: { employeeId: String(employeeId), template: "all_administrator" },
+    });
+    const grantDuration = Date.now() - grantStart;
+    const grantSuccess = grantRes.status >= 200 && grantRes.status < 300;
+
+    stepResults.push({
+      stepNumber: stepNum,
+      success: grantSuccess,
+      statusCode: grantRes.status,
+      data: grantRes.data,
+      duration: grantDuration,
+      ...(!grantSuccess && { error: `Entitlement grant returned ${grantRes.status}` }),
+    });
+
+    if (!grantSuccess) {
+      log.warn("Template grant failed, trying individual entitlement search+grant");
+
+      // Approach 2: Search for available entitlements and grant specific ones
+      stepNum++;
+      const searchRes = await client.get("/v2/employee/entitlement", {
+        employeeId: String(employeeId),
+        fields: "*",
+      });
+
+      if (searchRes.status === 200) {
+        log.info("Entitlement search result", { data: searchRes.data });
       }
+
+      stepResults.push({
+        stepNumber: stepNum,
+        success: searchRes.status === 200,
+        statusCode: searchRes.status,
+        data: searchRes.data,
+        duration: 0,
+      });
+    }
+
+    if (grantSuccess) {
+      log.info("Admin role assigned successfully");
     }
   }
 
-  return {
-    plan,
-    stepResults: [stepResult],
-    verified,
+  // Verify creation
+  let verified = false;
+  if (employeeId) {
+    try {
+      const check = await client.get(`/v2/employee/${employeeId}`);
+      verified = check.status === 200;
+      log.info(`Verification: ${verified ? "passed" : "failed"}`);
+    } catch (err) {
+      log.warn("Verification request failed", { error: String(err) });
+    }
+  }
+
+  const plan: ExecutionPlan = {
+    summary: `Create employee: ${firstName} ${lastName}${shouldAssignAdmin ? " (administrator)" : ""}`,
+    steps,
   };
+
+  return { plan, stepResults, verified };
 }
 
 function extractId(data: unknown): number | undefined {

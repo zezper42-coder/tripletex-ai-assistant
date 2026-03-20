@@ -69,21 +69,26 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   }
 
   // Detect resource — check more specific first (credit note > travel expense > others)
+  // Also check for compound patterns like "project for customer" where the primary resource is project
+  const lower = prompt.toLowerCase();
+
+  // Check for compound patterns first — e.g. "opprett prosjekt for kunde X"
+  const PROJECT_FOR_CUSTOMER_RE = /(?:prosjekt|project|proyecto|projekt|projet|projeto)\s+(?:for|til|para|für|pour)\s+(?:kunde|customer|client|cliente|Kunde)/i;
+  const INVOICE_FOR_CUSTOMER_RE = /(?:faktura|invoice|factura|Rechnung|facture|fatura)\s+(?:for|til|para|für|pour)\s+(?:kunde|customer|client|cliente|Kunde)/i;
+
   if (containsAny(prompt, CREDIT_NOTE_KEYWORDS)) {
     likelyResource = "creditNote";
     signals.push("credit_note_keyword");
   } else if (containsAny(prompt, TRAVEL_KEYWORDS)) {
     likelyResource = "travelExpense";
     signals.push("travel_expense_keyword");
-  } else if (containsAny(prompt, CUSTOMER_KEYWORDS)) {
-    likelyResource = "customer";
-    signals.push("customer_keyword");
-    if (EMAIL_RE.test(prompt)) { confidenceBoost += 0.05; signals.push("has_email"); }
-    if (ORG_NR_RE.test(prompt)) { confidenceBoost += 0.05; signals.push("has_org_number"); }
-  } else if (containsAny(prompt, EMPLOYEE_KEYWORDS)) {
-    likelyResource = "employee";
-    signals.push("employee_keyword");
-    if (EMAIL_RE.test(prompt)) { confidenceBoost += 0.03; signals.push("has_email"); }
+  } else if (PROJECT_FOR_CUSTOMER_RE.test(prompt)) {
+    // "Create project for customer X" — primary resource is project
+    likelyResource = "project";
+    signals.push("project_for_customer_pattern");
+  } else if (INVOICE_FOR_CUSTOMER_RE.test(prompt)) {
+    likelyResource = "invoice";
+    signals.push("invoice_for_customer_pattern");
   } else if (containsAny(prompt, INVOICE_KEYWORDS)) {
     likelyResource = "invoice";
     signals.push("invoice_keyword");
@@ -93,12 +98,32 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   } else if (containsAny(prompt, PROJECT_KEYWORDS)) {
     likelyResource = "project";
     signals.push("project_keyword");
+  } else if (containsAny(prompt, EMPLOYEE_KEYWORDS)) {
+    likelyResource = "employee";
+    signals.push("employee_keyword");
+    if (EMAIL_RE.test(prompt)) { confidenceBoost += 0.03; signals.push("has_email"); }
+  } else if (containsAny(prompt, CUSTOMER_KEYWORDS)) {
+    likelyResource = "customer";
+    signals.push("customer_keyword");
+    if (EMAIL_RE.test(prompt)) { confidenceBoost += 0.05; signals.push("has_email"); }
+    if (ORG_NR_RE.test(prompt)) { confidenceBoost += 0.05; signals.push("has_org_number"); }
   } else if (containsAny(prompt, PRODUCT_KEYWORDS)) {
     likelyResource = "product";
     signals.push("product_keyword");
   } else if (containsAny(prompt, DEPARTMENT_KEYWORDS)) {
     likelyResource = "department";
     signals.push("department_keyword");
+  }
+
+  // Add general data signals (useful for conflict resolution weighting)
+  if (EMAIL_RE.test(prompt) && !signals.includes("has_email")) {
+    signals.push("has_email");
+  }
+  if (ORG_NR_RE.test(prompt) && !signals.includes("has_org_number")) {
+    signals.push("has_org_number");
+  }
+  if (PHONE_RE.test(prompt)) {
+    signals.push("has_phone");
   }
 
   if (likelyResource && likelyAction) {
