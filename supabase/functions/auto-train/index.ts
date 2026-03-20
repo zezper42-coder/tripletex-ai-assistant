@@ -310,7 +310,7 @@ serve(async (req) => {
 
       const iterStart = Date.now();
       try {
-        const pipelineResult = await runPipeline(solveRequest, gatewayKey);
+        const pipelineResult = await runPipeline(solveRequest, apiKey);
         const duration = Date.now() - iterStart;
 
         const swarmUsed = pipelineResult.logs.some(
