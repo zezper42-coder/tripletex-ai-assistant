@@ -105,7 +105,7 @@ export async function tryInvoiceCreation(
     return { success: true, variant: "PUT /v2/order/{id}/:invoice (body)", status: v1b.status, data: v1b.data };
   }
 
-  log.warn("Variant 1 failed, trying variant 2", { status: v1.status });
+  log.warn("All PUT variants failed, trying direct POST /v2/invoice", { v1Status: v1.status, v1bStatus: v1b.status });
 
   // Variant 2: POST /v2/invoice
   const directBody: Record<string, unknown> = {
