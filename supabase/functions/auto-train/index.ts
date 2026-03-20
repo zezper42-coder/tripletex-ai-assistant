@@ -144,14 +144,14 @@ async function generateTask(
     .replace("{language}", language) + uniquenessClause;
 
   for (let attempt = 0; attempt < 3; attempt++) {
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3.1-pro-preview",
+        model: "gpt-4o",
         messages: [
           { role: "system", content: prompt },
           {
@@ -229,9 +229,9 @@ serve(async (req) => {
       mockMode = false,
     } = body;
 
-    const gatewayKey = Deno.env.get("LOVABLE_API_KEY");
-    if (!gatewayKey) {
-      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), {
+    const apiKey = Deno.env.get("OPENAI_API_KEY");
+    if (!apiKey) {
+      return new Response(JSON.stringify({ error: "OPENAI_API_KEY not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -266,7 +266,7 @@ serve(async (req) => {
 
       let taskText = "";
       try {
-        taskText = await generateTask(gatewayKey, resourceType, intent, language, generatedTasks);
+        taskText = await generateTask(apiKey, resourceType, intent, language, generatedTasks);
       } catch (err) {
         console.error(`[auto-train] Task generation failed:`, err);
         results.push({
@@ -310,7 +310,7 @@ serve(async (req) => {
 
       const iterStart = Date.now();
       try {
-        const pipelineResult = await runPipeline(solveRequest, gatewayKey);
+        const pipelineResult = await runPipeline(solveRequest, apiKey);
         const duration = Date.now() - iterStart;
 
         const swarmUsed = pipelineResult.logs.some(
