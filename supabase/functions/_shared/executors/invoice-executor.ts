@@ -98,7 +98,7 @@ function normalizeFields(fields: Record<string, unknown>): InvoiceFields {
   }));
 
   return {
-    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? ""),
+    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn ?? ""),
     customerEmail: (fields.customerEmail ?? fields.customer_email) as string | undefined,
     customerPhone: (fields.customerPhone ?? fields.customer_phone ?? fields.phoneNumber) as string | undefined,
     customerOrgNr: (fields.customerOrgNr ?? fields.organizationNumber) as string | undefined,
