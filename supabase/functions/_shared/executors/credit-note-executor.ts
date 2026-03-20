@@ -5,10 +5,7 @@ import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { ExecutorResult } from "../task-router.ts";
 import { validateCreditNoteFields } from "../field-validation.ts";
-
-// TODO: Confirm exact Tripletex credit note endpoint and payload shape with live API
-// Primary path: PUT /v2/invoice/{id}/:createCreditNote
-// Fallback: POST /v2/invoice with negative line amounts referencing original invoice
+import { tryCreditNoteCreation } from "../tripletex-compat.ts";
 
 export async function executeCreditNoteCreate(
   parsed: ParsedTask,
@@ -101,36 +98,35 @@ export async function executeCreditNoteCreate(
   const creditMode = isPartial ? "partial" : "full";
   logger.info("Credit mode", { creditMode, requestedAmount, invoiceTotal });
 
-  // ── Create credit note ──────────────────────────────────────
-  // TODO: Confirm PUT /v2/invoice/{id}/:createCreditNote is correct path
-  // TODO: Confirm if partial credit requires specific body fields
+  // ── Create credit note via compat helper ─────────────────────
   stepNum++;
-  const creditDesc = `PUT /v2/invoice/${resolvedInvoiceId}/:createCreditNote — ${creditMode} credit`;
   const creditBody: Record<string, unknown> = {};
   if (fields.reason) creditBody.comment = fields.reason;
   if (isPartial && requestedAmount != null) {
-    // TODO: Confirm partial credit body shape — may need creditedAmount or line-level adjustments
     creditBody.amount = requestedAmount;
   }
 
+  const creditDesc = `Credit note for invoice ${resolvedInvoiceId} — ${creditMode}`;
   steps.push({ stepNumber: stepNum, description: creditDesc, method: "PUT", endpoint: `/v2/invoice/${resolvedInvoiceId}/:createCreditNote`, body: creditBody, resultKey: "creditNoteId" });
 
-  const creditRes = await client.put(`/v2/invoice/${resolvedInvoiceId}/:createCreditNote`, creditBody);
-  const creditSr: StepResult = { stepNumber: stepNum, success: creditRes.ok, statusCode: creditRes.status, data: creditRes.data, duration: 0 };
+  const creditResult = await tryCreditNoteCreation(client, logger, resolvedInvoiceId, creditBody);
+  const creditSr: StepResult = { stepNumber: stepNum, success: creditResult.success, statusCode: creditResult.status, data: creditResult.data, duration: 0 };
   stepResults.push(creditSr);
 
-  if (!creditRes.ok) {
-    logger.warn("Credit note creation failed", { status: creditRes.status, data: creditRes.data });
-    // TODO: Implement fallback via POST /v2/invoice with negative amounts if action endpoint unsupported
+  if (!creditResult.success) {
+    logger.warn("Credit note creation failed", { variant: creditResult.variant, status: creditResult.status });
     return {
-      plan: { summary: `Credit note creation failed (${creditRes.status})`, steps },
+      plan: { summary: `Credit note failed via ${creditResult.variant}`, steps },
       stepResults, verified: false,
     };
   }
 
-  const creditNoteId = creditRes.data?.value?.id ?? creditRes.data?.id ?? null;
+  const creditNoteData = creditResult.data as Record<string, unknown> | null;
+  const creditNoteId = creditNoteData?.value
+    ? (creditNoteData.value as Record<string, unknown>).id
+    : creditNoteData?.id ?? null;
   const summary = creditNoteId
-    ? `Credit note created (ID: ${creditNoteId}) for invoice ${resolvedInvoiceId} — ${creditMode}`
+    ? `Credit note created (ID: ${creditNoteId}) for invoice ${resolvedInvoiceId} — ${creditMode} (via ${creditResult.variant})`
     : `Credit note created for invoice ${resolvedInvoiceId} — ${creditMode}`;
 
   return {

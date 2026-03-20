@@ -5,6 +5,7 @@ import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { validateProductFields, ValidationError } from "../field-validation.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { VatTypeLookup } from "../vat-lookup.ts";
 
 export async function executeProductCreate(
   parsed: ParsedTask,
@@ -19,8 +20,21 @@ export async function executeProductCreate(
   const number = (f.number ?? f.productNumber ?? f.code ?? f.produktnummer) as string | undefined;
   const price = (f.price ?? f.priceExcludingVatCurrency ?? f.pris ?? f.precio ?? f.prix) as number | string | undefined;
   const description = (f.description ?? f.beskrivelse ?? f.descripcion ?? f.Beschreibung) as string | undefined;
-  // TODO: VAT type lookup — may need GET /v2/ledger/vatType to find valid vatType id
-  const vatTypeId = (f.vatTypeId ?? f.vatType ?? f.mvaType) as number | undefined;
+  const vatRate = (f.vatRate ?? f.mvaRate ?? f.vat ?? f.mva) as number | undefined;
+  const vatCode = (f.vatCode ?? f.mvaCode ?? f.vatNumber) as number | undefined;
+  let vatTypeId = (f.vatTypeId ?? f.vatType ?? f.mvaType) as number | undefined;
+
+  // VAT lookup if rate/code provided but no explicit ID
+  if (!vatTypeId && (vatRate != null || vatCode != null)) {
+    const vatLookup = new VatTypeLookup(client, logger);
+    const resolved = await vatLookup.resolve({ rate: vatRate ? Number(vatRate) : undefined, code: vatCode ? Number(vatCode) : undefined });
+    if (resolved) {
+      vatTypeId = resolved.id;
+      log.info("VAT type resolved", { vatTypeId, name: resolved.name, percentage: resolved.percentage });
+    } else {
+      log.warn("VAT type not resolved, proceeding without", { vatRate, vatCode });
+    }
+  }
 
   const normalizedFields: Record<string, unknown> = {
     name,
