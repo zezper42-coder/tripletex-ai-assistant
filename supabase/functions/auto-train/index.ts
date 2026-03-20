@@ -129,12 +129,19 @@ async function generateTask(
   apiKey: string,
   resourceType: string,
   intent: string,
-  language: string
+  language: string,
+  previousTasks: string[] = [],
 ): Promise<string> {
+  let uniquenessClause = "";
+  if (previousTasks.length > 0) {
+    const listed = previousTasks.map((t, i) => `${i + 1}. "${t.substring(0, 120)}"`).join("\n");
+    uniquenessClause = `\n\nCRITICAL — The following tasks have ALREADY been generated. You MUST create a COMPLETELY DIFFERENT task with different names, amounts, dates, companies, and details. Never repeat or paraphrase these:\n${listed}`;
+  }
+
   const prompt = TASK_GENERATION_PROMPT
     .replace("{resourceType}", resourceType)
     .replace("{intent}", intent)
-    .replace("{language}", language);
+    .replace("{language}", language) + uniquenessClause;
 
   for (let attempt = 0; attempt < 3; attempt++) {
     const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -150,8 +157,8 @@ async function generateTask(
           {
             role: "user",
             content: attempt === 0
-              ? `Generate a ${intent} task for ${resourceType} in ${language}.`
-              : `Previous response was empty. Return exactly one non-empty ${language} task prompt for ${resourceType} with intent ${intent}. Plain text only.`,
+              ? `Generate a unique ${intent} task for ${resourceType} in ${language}. Use creative, original names and data not seen before.`
+              : `Previous response was empty. Return exactly one non-empty, UNIQUE ${language} task prompt for ${resourceType} with intent ${intent}. Plain text only. Do not repeat any previous task.`,
           },
         ],
         tools: [
@@ -179,7 +186,7 @@ async function generateTask(
 
     if (!resp.ok) {
       const err = await resp.text();
-      throw new Error(`OpenAI task generation failed: ${resp.status} ${err}`);
+      throw new Error(`Task generation failed: ${resp.status} ${err}`);
     }
 
     const data = await resp.json();
@@ -197,7 +204,7 @@ async function generateTask(
     });
   }
 
-  throw new Error("GPT returned empty task after 3 attempts");
+  throw new Error("LLM returned empty task after 3 attempts");
 }
 
 serve(async (req) => {
@@ -242,6 +249,7 @@ serve(async (req) => {
       : RESOURCE_TYPES;
 
     const results: TrainResult[] = [];
+    const generatedTasks: string[] = []; // Track all generated tasks for uniqueness
     let succeeded = 0;
     let failed = 0;
     let newSolutionsLearned = 0;
@@ -258,7 +266,7 @@ serve(async (req) => {
 
       let taskText = "";
       try {
-        taskText = await generateTask(gatewayKey, resourceType, intent, language);
+        taskText = await generateTask(gatewayKey, resourceType, intent, language, generatedTasks);
       } catch (err) {
         console.error(`[auto-train] Task generation failed:`, err);
         results.push({
@@ -289,6 +297,9 @@ serve(async (req) => {
         failed++;
         continue;
       }
+
+      // Track for uniqueness
+      generatedTasks.push(taskText);
 
       const solveRequest: SolveRequest = {
         task: taskText,
