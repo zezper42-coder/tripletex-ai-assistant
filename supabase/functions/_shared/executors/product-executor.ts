@@ -72,7 +72,7 @@ export async function executeProductCreate(
 
   log.info("Executing product creation", { body });
   const start = Date.now();
-  let response = await client.post("/v2/product", body);
+  let response = await client.postWithRetry("/v2/product", body);
   let duration = Date.now() - start;
   
   // If vatType caused a 422, retry without it
