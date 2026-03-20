@@ -199,7 +199,7 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3 text-center">
-                <p className="text-2xl font-bold text-green-600">{response.succeeded}</p>
+                <p className="text-2xl font-bold text-primary">{response.succeeded}</p>
                 <p className="text-xs text-muted-foreground">Passed</p>
               </CardContent>
             </Card>
@@ -211,7 +211,7 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
             </Card>
             <Card>
               <CardContent className="pt-3 pb-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{response.newSolutionsLearned}</p>
+                <p className="text-2xl font-bold text-primary">{response.newSolutionsLearned}</p>
                 <p className="text-xs text-muted-foreground">Learned</p>
               </CardContent>
             </Card>
@@ -238,10 +238,10 @@ export default function AutoTrainPanel({ apiUrl, sessionToken }: AutoTrainPanelP
                         <Badge variant="secondary" className="text-xs">{r.language}</Badge>
                         <span className="text-xs text-muted-foreground">{r.duration}ms</span>
                         {r.swarmUsed && (
-                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">swarm</Badge>
+                          <Badge variant="outline" className="text-xs">swarm</Badge>
                         )}
                         {r.solutionLearned && (
-                          <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">learned</Badge>
+                          <Badge variant="secondary" className="text-xs">learned</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate">{r.task}</p>
