@@ -68,8 +68,11 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
     signals.push("update_keyword_detected");
   }
 
-  // Detect resource — check more specific first (travel expense before employee)
-  if (containsAny(prompt, TRAVEL_KEYWORDS)) {
+  // Detect resource — check more specific first (credit note > travel expense > others)
+  if (containsAny(prompt, CREDIT_NOTE_KEYWORDS)) {
+    likelyResource = "creditNote";
+    signals.push("credit_note_keyword");
+  } else if (containsAny(prompt, TRAVEL_KEYWORDS)) {
     likelyResource = "travelExpense";
     signals.push("travel_expense_keyword");
   } else if (containsAny(prompt, CUSTOMER_KEYWORDS)) {

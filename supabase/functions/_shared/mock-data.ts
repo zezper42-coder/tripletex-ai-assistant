@@ -32,6 +32,7 @@ export function getMockResult(taskPrompt: string): PipelineResult {
   const isCreate = ["opprett", "create", "erstellen", "crear", "créer", "criar", "registrer", "ny ", "new ", "neue"]
     .some((kw) => lower.includes(kw));
 
+  if (isCreditNote) return buildMockCreditNote();
   if (isTravelKeyword && isDelete) return buildMockTravelExpenseDelete();
   if (isTravelKeyword && isCreate) return buildMockTravelExpenseCreate();
   if (isPayment) return buildMockPayment();
