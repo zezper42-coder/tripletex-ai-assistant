@@ -249,6 +249,7 @@ serve(async (req) => {
       : RESOURCE_TYPES;
 
     const results: TrainResult[] = [];
+    const generatedTasks: string[] = []; // Track all generated tasks for uniqueness
     let succeeded = 0;
     let failed = 0;
     let newSolutionsLearned = 0;
@@ -265,7 +266,7 @@ serve(async (req) => {
 
       let taskText = "";
       try {
-        taskText = await generateTask(gatewayKey, resourceType, intent, language);
+        taskText = await generateTask(gatewayKey, resourceType, intent, language, generatedTasks);
       } catch (err) {
         console.error(`[auto-train] Task generation failed:`, err);
         results.push({
