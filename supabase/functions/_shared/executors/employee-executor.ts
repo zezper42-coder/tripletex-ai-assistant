@@ -56,6 +56,7 @@ export async function executeEmployeeCreate(
   const body: Record<string, unknown> = {
     firstName: normalizedFields.firstName,
     lastName: normalizedFields.lastName,
+    userType: "STANDARD",
   };
   if (normalizedFields.email) body.email = normalizedFields.email;
   if (normalizedFields.phoneNumberMobile) body.phoneNumberMobile = normalizedFields.phoneNumberMobile;
