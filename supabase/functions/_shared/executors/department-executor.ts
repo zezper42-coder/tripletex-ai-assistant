@@ -1,9 +1,10 @@
-// Department creation executor — deterministic path with optional module enablement
+// Department creation executor — deterministic path with module enablement
 
 import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan, ExecutionStep } from "../types.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { enableSalesModules } from "../tripletex-compat.ts";
 
 interface ValidationError { field: string; message: string; }
 
@@ -61,10 +62,35 @@ export async function executeDepartmentCreate(
   const stepResults: StepResult[] = [];
   let stepNum = 0;
 
-  // ── Optional: enable department module if hinted ──
+  // ── Enable department/accounting modules ──
   const enableModule = fields.enable_department_module ?? fields.enableDepartmentModule;
-  if (enableModule) {
-    log.info("Department module enablement requested — assuming enabled in sandbox");
+  const promptLower = (parsed.normalizedPrompt ?? "").toLowerCase();
+  const shouldEnableModules = enableModule || 
+    promptLower.includes("aktiver") || 
+    promptLower.includes("enable") || 
+    promptLower.includes("modul");
+
+  if (shouldEnableModules) {
+    stepNum++;
+    steps.push({
+      stepNumber: stepNum,
+      description: "POST /v2/company/salesmodules — activate modules",
+      method: "POST",
+      endpoint: "/v2/company/salesmodules",
+      body: {},
+      resultKey: "moduleActivation",
+    });
+
+    const moduleResult = await enableSalesModules(client, log);
+    stepResults.push({
+      stepNumber: stepNum,
+      success: moduleResult.success,
+      statusCode: moduleResult.status,
+      data: moduleResult.data,
+      duration: 0,
+      ...(!moduleResult.success && { error: `Module activation: ${moduleResult.status}` }),
+    });
+    // Don't fail the whole task if module activation fails — it may already be active
   }
 
   // ── Create department ──
