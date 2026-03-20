@@ -88,24 +88,24 @@ function normalizeFields(fields: Record<string, unknown>): InvoiceFields {
   const today = new Date().toISOString().slice(0, 10);
   const defaultDue = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 
-  const rawLines = (fields.lineItems ?? fields.line_items ?? fields.lines ?? []) as Record<string, unknown>[];
+  const rawLines = (fields.lineItems ?? fields.line_items ?? fields.lines ?? fields.orderLines ?? []) as Record<string, unknown>[];
   const lineItems: LineItem[] = rawLines.map((li) => ({
-    description: String(li.description ?? li.product ?? li.name ?? "Item"),
-    quantity: Number(li.quantity ?? li.count ?? 1),
-    unitPrice: Number(li.unitPrice ?? li.unit_price ?? li.price ?? 0),
+    description: String(li.description ?? li.product ?? li.name ?? li.produktnavn ?? li.varenavn ?? "Item"),
+    quantity: Number(li.quantity ?? li.count ?? li.antall ?? li.mengde ?? 1),
+    unitPrice: Number(li.unitPrice ?? li.unit_price ?? li.price ?? li.pris ?? li.unitPriceExcludingVatCurrency ?? 0),
     ...(li.productId ? { productId: Number(li.productId) } : {}),
     ...(li.vatTypeId ? { vatTypeId: Number(li.vatTypeId) } : {}),
   }));
 
   return {
-    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn ?? ""),
-    customerEmail: (fields.customerEmail ?? fields.customer_email) as string | undefined,
-    customerPhone: (fields.customerPhone ?? fields.customer_phone ?? fields.phoneNumber) as string | undefined,
-    customerOrgNr: (fields.customerOrgNr ?? fields.organizationNumber) as string | undefined,
-    invoiceDate: String(fields.invoiceDate ?? fields.invoice_date ?? today),
-    dueDate: String(fields.dueDate ?? fields.due_date ?? fields.invoiceDueDate ?? defaultDue),
+    customerName: String(fields.customerName ?? fields.customer_name ?? fields.customer ?? fields.name ?? fields.kunde ?? fields.kundenavn ?? fields.cliente ?? ""),
+    customerEmail: (fields.customerEmail ?? fields.customer_email ?? fields.email ?? fields.epost) as string | undefined,
+    customerPhone: (fields.customerPhone ?? fields.customer_phone ?? fields.phoneNumber ?? fields.telefon) as string | undefined,
+    customerOrgNr: (fields.customerOrgNr ?? fields.organizationNumber ?? fields.orgNumber ?? fields.organisasjonsnummer) as string | undefined,
+    invoiceDate: String(fields.invoiceDate ?? fields.invoice_date ?? fields.fakturadato ?? today),
+    dueDate: String(fields.dueDate ?? fields.due_date ?? fields.invoiceDueDate ?? fields.forfallsdato ?? defaultDue),
     lineItems,
-    comment: (fields.comment ?? fields.description) as string | undefined,
+    comment: (fields.comment ?? fields.description ?? fields.kommentar) as string | undefined,
   };
 }
 
