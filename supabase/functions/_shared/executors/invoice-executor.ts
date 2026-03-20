@@ -135,6 +135,8 @@ export async function executeInvoiceCreate(
 
   // Ensure company has bank account (required for invoice creation in fresh accounts)
   await ensureCompanyBankAccount(client, logger);
+
+  // Validate
   const errors = validateInvoiceFields(fields);
   if (errors.length > 0) {
     log.error("Validation failed", { errors });
