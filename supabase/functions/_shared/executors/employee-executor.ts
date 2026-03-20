@@ -5,6 +5,7 @@ import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan } from "../types.ts";
 import { validateEmployeeFields, ValidationError } from "../field-validation.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
 const ADMIN_KEYWORDS = [
   "administrator", "kontoadministrator", "account administrator",
@@ -162,63 +163,29 @@ export async function executeEmployeeCreate(
   const shouldAssignAdmin = isAdminRole(fields) || adminInPrompt;
 
   if (shouldAssignAdmin && employeeId) {
-    log.info("Assigning administrator role to employee");
     stepNum++;
-
-    // Try multiple approaches for admin role assignment:
-
-    // Approach 1: Grant entitlements by template
-    const grantUrl = `/v2/employee/entitlement/:grantEntitlementsByTemplate`;
     steps.push({
       stepNumber: stepNum,
-      description: `PUT ${grantUrl} — grant admin entitlements`,
+      description: "Grant admin entitlements (userType EXTENDED + template)",
       method: "PUT",
-      endpoint: grantUrl,
+      endpoint: "/v2/employee/entitlement/:grantEntitlementsByTemplate",
       body: {},
       resultKey: "entitlementGrant",
     });
 
     const grantStart = Date.now();
-    const grantRes = await client.request("PUT", grantUrl, {
-      queryParams: { employeeId: String(employeeId), template: "all_administrator" },
-    });
-    const grantDuration = Date.now() - grantStart;
-    const grantSuccess = grantRes.status >= 200 && grantRes.status < 300;
-
+    const grantResult = await grantAdminEntitlements(client, log, employeeId);
     stepResults.push({
       stepNumber: stepNum,
-      success: grantSuccess,
-      statusCode: grantRes.status,
-      data: grantRes.data,
-      duration: grantDuration,
-      ...(!grantSuccess && { error: `Entitlement grant returned ${grantRes.status}` }),
+      success: grantResult.success,
+      statusCode: grantResult.status,
+      data: grantResult.data,
+      duration: Date.now() - grantStart,
+      ...(!grantResult.success && { error: "All entitlement templates failed" }),
     });
 
-    if (!grantSuccess) {
-      log.warn("Template grant failed, trying individual entitlement search+grant");
-
-      // Approach 2: Search for available entitlements and grant specific ones
-      stepNum++;
-      const searchRes = await client.get("/v2/employee/entitlement", {
-        employeeId: String(employeeId),
-        fields: "*",
-      });
-
-      if (searchRes.status === 200) {
-        log.info("Entitlement search result", { data: searchRes.data });
-      }
-
-      stepResults.push({
-        stepNumber: stepNum,
-        success: searchRes.status === 200,
-        statusCode: searchRes.status,
-        data: searchRes.data,
-        duration: 0,
-      });
-    }
-
-    if (grantSuccess) {
-      log.info("Admin role assigned successfully");
+    if (grantResult.success) {
+      log.info(`Admin role assigned via template: ${grantResult.template}`);
     }
   }
 

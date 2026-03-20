@@ -4,6 +4,7 @@ import { Logger } from "../logger.ts";
 import { TripletexClient } from "../tripletex-client.ts";
 import { ParsedTask, StepResult, ExecutionPlan, ExecutionStep } from "../types.ts";
 import { ExecutorResult } from "../task-router.ts";
+import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
 export async function executeEmployeeUpdate(
   parsed: ParsedTask,
@@ -128,25 +129,23 @@ export async function executeEmployeeUpdate(
   if (isAdmin) {
     stepNum++;
     log.info("Assigning administrator role to employee");
-    const grantUrl = `/v2/employee/entitlement/:grantEntitlementsByTemplate`;
     steps.push({
       stepNumber: stepNum,
-      description: `PUT ${grantUrl} — grant admin entitlements`,
+      description: "Grant admin entitlements (userType EXTENDED + template)",
       method: "PUT",
-      endpoint: grantUrl,
+      endpoint: "/v2/employee/entitlement/:grantEntitlementsByTemplate",
       body: {},
       resultKey: "entitlementGrant",
     });
 
-    const grantRes = await client.request("PUT", grantUrl, {
-      queryParams: { employeeId: String(employeeId), template: "all_administrator" },
-    });
+    const grantResult = await grantAdminEntitlements(client, log, employeeId);
     stepResults.push({
       stepNumber: stepNum,
-      success: grantRes.status >= 200 && grantRes.status < 300,
-      statusCode: grantRes.status,
-      data: grantRes.data,
+      success: grantResult.success,
+      statusCode: grantResult.status,
+      data: grantResult.data,
       duration: 0,
+      ...(!grantResult.success && { error: "All entitlement templates failed" }),
     });
   }
 
