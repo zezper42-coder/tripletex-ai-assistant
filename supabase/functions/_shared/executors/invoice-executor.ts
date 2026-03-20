@@ -218,7 +218,7 @@ export async function executeInvoiceCreate(
     steps.push(createStep);
 
     const createStart = Date.now();
-    const createRes = await client.post("/v2/customer", customerBody);
+    const createRes = await client.postWithRetry("/v2/customer", customerBody);
     const createDuration = Date.now() - createStart;
     const createSuccess = createRes.status >= 200 && createRes.status < 300;
 
