@@ -97,3 +97,27 @@ export function validateCreditNoteFields(fields: Record<string, unknown>): Valid
 
   return [];
 }
+
+/**
+ * Retry helper for 422 Validation Errors from Tripletex.
+ * Parses validationMessages, strips problematic fields, retries once.
+ * Returns the retry response or null if no retry was possible.
+ */
+export function extractValidationFields(responseData: unknown): string[] {
+  if (!responseData || typeof responseData !== "object") return [];
+  const data = responseData as Record<string, unknown>;
+  const messages = data.validationMessages as Array<{ field?: string; message?: string }> | undefined;
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .map((m) => m.field)
+    .filter((f): f is string => !!f)
+    .map((f) => f.replace(/^[^.]*\./, "")); // strip prefix like "Employee."
+}
+
+export function stripFields(body: Record<string, unknown>, fieldsToRemove: string[]): Record<string, unknown> {
+  const cleaned = { ...body };
+  for (const f of fieldsToRemove) {
+    delete cleaned[f];
+  }
+  return cleaned;
+}

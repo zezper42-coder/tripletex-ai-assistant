@@ -17,6 +17,7 @@ import { executeDepartmentCreate } from "./executors/department-executor.ts";
 import { executeCreditNoteCreate } from "./executors/credit-note-executor.ts";
 import { executeSupplierCreate } from "./executors/supplier-executor.ts";
 import { executeContactCreate } from "./executors/contact-executor.ts";
+import { executeVoucherCreate } from "./executors/voucher-executor.ts";
 
 export interface ExecutorResult {
   plan: ExecutionPlan;
@@ -40,6 +41,7 @@ export type TaskType =
   | "creditNote_create"
   | "supplier_create"
   | "contact_create"
+  | "voucher_create"
   | "unknown";
 
 type ExecutorFn = (
@@ -63,6 +65,7 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
   creditNote_create: executeCreditNoteCreate,
   supplier_create: executeSupplierCreate,
   contact_create: executeContactCreate,
+  voucher_create: executeVoucherCreate,
 };
 
 // Normalize camelCase resource types to snake_case for executor lookup

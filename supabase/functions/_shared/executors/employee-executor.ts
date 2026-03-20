@@ -70,20 +70,13 @@ export async function executeEmployeeCreate(
   const stepResults: StepResult[] = [];
   let stepNum = 0;
 
-  // Look up department — Tripletex may require it
+  // Look up department only if explicitly specified — saves API calls
   let departmentId: number | undefined;
   const deptField = (fields.department ?? fields.avdeling ?? fields.departmentId) as string | number | undefined;
   if (deptField) {
-    const deptSearch = await client.get("/v2/department", { name: String(deptField), count: "1", fields: "id,name" });
+    const deptSearch = await client.get("/v2/department", { name: String(deptField), count: "1", fields: "id" });
     if (deptSearch.status === 200) {
       const vals = ((deptSearch.data as any)?.values ?? []) as Array<{ id: number }>;
-      if (vals.length > 0) departmentId = vals[0].id;
-    }
-  }
-  if (!departmentId) {
-    const deptList = await client.get("/v2/department", { count: "1", fields: "id" });
-    if (deptList.status === 200) {
-      const vals = ((deptList.data as any)?.values ?? []) as Array<{ id: number }>;
       if (vals.length > 0) departmentId = vals[0].id;
     }
   }
