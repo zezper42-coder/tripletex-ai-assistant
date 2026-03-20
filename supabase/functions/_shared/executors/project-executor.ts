@@ -103,12 +103,15 @@ export async function executeProjectCreate(
 
       // Add address if available
       if (customerAddress || customerPostalCode || customerCity || customerCountry) {
-        customerBody.postalAddress = {
-          ...(customerAddress && { addressLine1: customerAddress }),
-          ...(customerPostalCode && { postalCode: customerPostalCode }),
-          ...(customerCity && { city: customerCity }),
-          ...(customerCountry && { country: { name: customerCountry } }),
-        };
+        const addrObj: Record<string, unknown> = {};
+        if (customerAddress) addrObj.addressLine1 = customerAddress;
+        if (customerPostalCode) addrObj.postalCode = customerPostalCode;
+        if (customerCity) addrObj.city = customerCity;
+        if (customerCountry) {
+          const cl = String(customerCountry).toLowerCase();
+          addrObj.country = { id: ["norge", "norway", "no", "nor"].includes(cl) ? 161 : 0 };
+        }
+        customerBody.postalAddress = addrObj;
       }
 
       log.info("Customer not found, creating", { customerBody });
