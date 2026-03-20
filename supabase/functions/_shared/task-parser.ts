@@ -80,7 +80,7 @@ Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "openai/gpt-5-mini",
+      model: "openai/gpt-5.2",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: taskPrompt },
