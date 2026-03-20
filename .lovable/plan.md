@@ -1,70 +1,51 @@
 
 
-## AI Accounting Agent for NM i AI — Tripletex Challenge
+## Platform Constraint
 
-### Architecture Overview
-- **POST /solve** as a Supabase Edge Function (HTTPS-ready, deployable)
-- **Lovable AI Gateway** for LLM-powered task understanding (intent extraction, entity parsing, planning)
-- **Minimal React test UI** for manual prompt simulation
-- **Modular pipeline** within edge function + shared modules
+Lovable cannot run Python or FastAPI. The platform supports **React/Vite** for frontend and **Supabase Edge Functions** (Deno/TypeScript) for backend. This project already has a working `POST /solve` edge function and test UI built in previous iterations.
 
-### Backend: Edge Function Pipeline (`supabase/functions/solve/index.ts`)
+## What Already Exists
 
-The `/solve` endpoint receives a task payload and runs this pipeline:
+- `supabase/functions/solve/index.ts` — POST /solve endpoint with full pipeline
+- `supabase/functions/_shared/` — modular pipeline (parser, planner, executor, verifier, tripletex-client, logger, types, mock-data, attachment-handler)
+- `src/components/SolveTestPanel.tsx` — developer test UI with prompt input, credentials, mock toggle, tabbed results
+- `src/lib/sample-prompts.ts` — multi-language sample prompts
 
-1. **Input validation** — validate request body (task prompt, base URL, session token, optional attachments)
-2. **Language detection** — use LLM to identify language (NO/EN/ES/PT/NN/DE/FR)
-3. **Task normalization** — translate/normalize prompt to English for consistent processing
-4. **Intent + Entity extraction** — LLM with structured tool calling to extract: intent (create/update/delete), resource type (employee/customer/invoice/etc.), required fields, dependencies
-5. **Execution planning** — generate ordered steps with dependency resolution
-6. **Tripletex API execution** — execute steps sequentially using dynamic client, store IDs for dependent steps
-7. **Verification** — lightweight GET calls to confirm created/modified resources exist
-8. **Response** — return `{"status":"completed"}` or error details
+## Proposed Improvements
 
-### Shared Modules (`supabase/functions/_shared/`)
+Rather than rebuilding what exists, I propose strengthening the current system to match all requirements in your prompt:
 
-- **tripletex-client.ts** — reusable API client (Basic Auth, GET/POST/PUT/DELETE, retry logic, logging)
-- **agent-pipeline.ts** — orchestration pipeline coordinator
-- **task-parser.ts** — LLM-powered intent/entity extraction with structured output schemas
-- **task-planner.ts** — converts parsed intent into executable step sequence
-- **task-executor.ts** — executes steps against Tripletex API with dependency resolution
-- **task-verifier.ts** — post-execution verification
-- **attachment-handler.ts** — attachment metadata parsing (stubbed OCR for v1)
-- **logger.ts** — structured logging utility
-- **types.ts** — all TypeScript interfaces (TaskPayload, ParsedTask, ExecutionPlan, Step, etc.)
-- **mock-data.ts** — sample payloads and mock responses for testing
+### 1. First Working Vertical Slice: "Create Customer"
+- Harden `task-parser.ts` to reliably extract customer fields (name, email, org number, etc.)
+- Harden `task-planner.ts` to generate correct Tripletex `/v2/customer` POST endpoint and body
+- Harden `task-executor.ts` to execute the call and store the returned customer ID
+- Harden `task-verifier.ts` to GET `/v2/customer/{id}` and confirm creation
+- Test end-to-end with mock mode
 
-### Supported Task Categories (Architecture)
+### 2. Add Base64 File Upload to Test UI
+- Add file upload control to `SolveTestPanel.tsx`
+- Convert files to base64 with filename and mime_type
+- Send as `attachments` array in the request body
 
-Create, update, delete operations for: employees, customers, products, invoices, payments, credit notes, projects, travel expenses, departments, corrections/reversals.
+### 3. Add Executor Routing by Task Type
+- Create a task-type routing map in the executor so each resource type (customer, employee, invoice, etc.) has dedicated endpoint mappings and field schemas
+- Add TODO markers for unimplemented task families
 
-### Tripletex API Client Features
+### 4. Add `/health` Endpoint
+- Create `supabase/functions/health/index.ts` returning `{"status":"ok"}`
 
-- Dynamic base URL + session token per request
-- Basic Auth (username: "0", password: session token)
-- Typed helpers for common endpoints (employee, customer, invoice, etc.)
-- Automatic retry with exponential backoff for transient failures
-- Request/response metadata logging (no sensitive data)
+### 5. Improve Request Schema
+- Update types to match the competition schema: `prompt`, `files` (with `filename`, `content_base64`, `mime_type`), `tripletex_credentials` (`base_url`, `session_token`)
+- Add backward compatibility with existing field names
 
-### Minimal Test UI (React Frontend)
+### 6. Add Realistic Stubs
+- Add stub executors for: employee, customer, product, invoice, travel expense, project, correction
+- Each with correct Tripletex API endpoint mappings and required field schemas
 
-Single-page developer tool with:
-- Text area for task prompt
-- Fields for Tripletex base URL and session token
-- File upload for PDF/image attachments
-- "Run Task" button
-- Results panel showing: detected language, parsed intent, entities, execution plan, API call log, errors, final status
-- Mock mode toggle for testing without real Tripletex calls
-- Dark/neutral technical styling
+### 7. Update README
+- Setup instructions, environment variables, how to test `/solve`, deployment info
 
-### Mock Mode
+## Technical Details
 
-- Toggle in UI and via request parameter
-- Returns realistic simulated responses without hitting Tripletex
-- Uses sample fixtures for all supported task types
-
-### Sample Fixtures
-
-- Example payloads in Norwegian, English, Spanish, Portuguese, Nynorsk, German, French
-- Covering: create employee, register customer, create invoice, register payment, create project, etc.
+All backend code lives in `supabase/functions/`. The edge function is deployed automatically and is HTTPS-ready. The Tripletex client, LLM-powered parser, and pipeline orchestration are already functional. The main gap is hardening the vertical slices and adding file upload support.
 
