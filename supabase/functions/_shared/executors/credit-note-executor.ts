@@ -69,12 +69,14 @@ export async function executeCreditNoteCreate(
     const desc = `GET /v2/invoice — search by customer "${customerName}"`;
     steps.push({ stepNumber: stepNum, description: desc, method: "GET", endpoint: "/v2/invoice", queryParams: { customerName: String(customerName) }, resultKey: "invoiceSearch" });
 
-    const searchRes = await client.get("/v2/invoice", { customerName: String(customerName) });
-    const sr: StepResult = { stepNumber: stepNum, success: searchRes.ok, statusCode: searchRes.status, data: searchRes.data, duration: 0 };
+    const searchRes = await client.get("/v2/invoice", { customerName: String(customerName), fields: "*" });
+    const searchOk = searchRes.status >= 200 && searchRes.status < 300;
+    const sr: StepResult = { stepNumber: stepNum, success: searchOk, statusCode: searchRes.status, data: searchRes.data, duration: 0 };
     stepResults.push(sr);
 
-    const candidates = searchRes.data?.values ?? [];
-    if (!searchRes.ok || candidates.length === 0) {
+    const d2 = searchRes.data as Record<string, unknown> | null;
+    const candidates: Record<string, unknown>[] = (d2?.values as Record<string, unknown>[]) ?? [];
+    if (!searchOk || candidates.length === 0) {
       logger.warn("No invoice found for customer", { customerName });
       return { plan: { summary: "Invoice not found for customer", steps }, stepResults, verified: false };
     }

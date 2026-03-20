@@ -136,7 +136,7 @@ export async function executeTravelExpenseCreate(
 
     log.info("Searching employee", { searchParams });
     const start = Date.now();
-    const res = await client.get("/v2/employee", searchParams);
+    const res = await client.get("/v2/employee", { ...searchParams, fields: "*" });
     const duration = Date.now() - start;
     const success = res.status >= 200 && res.status < 300;
 

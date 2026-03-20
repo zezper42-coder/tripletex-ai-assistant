@@ -206,7 +206,7 @@ export async function executePaymentCreate(
     });
 
     const start = Date.now();
-    const res = await client.get(`/v2/invoice/${invoiceId}`);
+    const res = await client.get(`/v2/invoice/${invoiceId}`, { fields: "*" });
     const duration = Date.now() - start;
 
     stepResults.push({
