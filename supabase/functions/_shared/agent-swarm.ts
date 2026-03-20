@@ -6,7 +6,7 @@ import { ParsedTask, ExecutionPlan, StepResult, ExecutionStep } from "./types.ts
 import { ExecutorResult } from "./task-router.ts";
 import { executeplan } from "./task-executor.ts";
 
-const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 const TRIPLETEX_API_REFERENCE = `
 Tripletex REST API v2 — Key endpoints:
