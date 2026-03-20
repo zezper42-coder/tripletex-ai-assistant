@@ -246,7 +246,7 @@ export async function executePaymentCreate(
 
   log.info("Creating payment", { invoiceId, amount: resolvedAmount, date: pf.paymentDate });
   const payStart = Date.now();
-  const payRes = await client.post("/v2/payment", paymentBody);
+  const payRes = await client.postWithRetry("/v2/payment", paymentBody);
   const payDuration = Date.now() - payStart;
   const paySuccess = payRes.status >= 200 && payRes.status < 300;
 

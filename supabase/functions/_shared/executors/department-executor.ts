@@ -86,7 +86,7 @@ export async function executeDepartmentCreate(
 
   log.info("Creating department", { body });
   const start = Date.now();
-  const res = await client.post("/v2/department", body);
+  const res = await client.postWithRetry("/v2/department", body);
   const duration = Date.now() - start;
   const success = res.status >= 200 && res.status < 300;
 

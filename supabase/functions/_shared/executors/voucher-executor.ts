@@ -98,7 +98,7 @@ export async function executeVoucherCreate(
 
   log.info("Creating voucher", { postingCount: voucherPostings.length });
   const start = Date.now();
-  const res = await client.post("/v2/ledger/voucher", body);
+  const res = await client.postWithRetry("/v2/ledger/voucher", body);
   const success = res.status >= 200 && res.status < 300;
 
   stepResults.push({

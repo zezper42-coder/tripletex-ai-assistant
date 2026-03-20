@@ -184,7 +184,7 @@ export async function executeProjectCreate(
 
   log.info("Executing project creation", { body });
   const start = Date.now();
-  const response = await client.post("/v2/project", body);
+  const response = await client.postWithRetry("/v2/project", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

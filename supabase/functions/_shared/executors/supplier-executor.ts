@@ -60,9 +60,9 @@ export async function executeSupplierCreate(
     summary: `Create supplier: ${normalizedFields.name}`,
     steps: [{
       stepNumber: 1,
-      description: `POST /v2/supplier — create "${normalizedFields.name}"`,
+      description: `POST /v2/customer — create supplier "${normalizedFields.name}"`,
       method: "POST",
-      endpoint: "/v2/supplier",
+      endpoint: "/v2/customer",
       body,
       resultKey: "supplierId",
     }],
@@ -70,7 +70,7 @@ export async function executeSupplierCreate(
 
   log.info("Executing supplier creation", { body });
   const start = Date.now();
-  const response = await client.post("/v2/supplier", body);
+  const response = await client.postWithRetry("/v2/customer", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

@@ -74,7 +74,7 @@ export async function executeCustomerCreate(
   log.info("Executing customer creation", { body });
   const start = Date.now();
 
-  const response = await client.post("/v2/customer", body);
+  const response = await client.postWithRetry("/v2/customer", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

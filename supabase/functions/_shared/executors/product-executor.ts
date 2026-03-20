@@ -84,7 +84,7 @@ export async function executeProductCreate(
       log.warn("VAT type rejected, retrying without vatType");
       delete body.vatType;
       const start2 = Date.now();
-      response = await client.post("/v2/product", body);
+      response = await client.postWithRetry("/v2/product", body);
       duration += Date.now() - start2;
     }
   }

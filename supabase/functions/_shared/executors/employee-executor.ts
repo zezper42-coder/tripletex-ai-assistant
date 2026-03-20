@@ -105,7 +105,7 @@ export async function executeEmployeeCreate(
 
   log.info("Executing employee creation", { body, adminDetected: isAdminRole(fields) || adminInPrompt });
   const start = Date.now();
-  const response = await client.post("/v2/employee", body);
+  const response = await client.postWithRetry("/v2/employee", body);
   const duration = Date.now() - start;
   const success = response.status >= 200 && response.status < 300;
 

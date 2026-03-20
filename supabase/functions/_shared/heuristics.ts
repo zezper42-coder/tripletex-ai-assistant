@@ -123,6 +123,12 @@ export function runHeuristics(prompt: string, logger: Logger): HeuristicResult {
   } else if (containsAny(prompt, CONTACT_KEYWORDS)) {
     likelyResource = "contact";
     signals.push("contact_keyword");
+  } else if (containsAny(prompt, VOUCHER_KEYWORDS)) {
+    likelyResource = "voucher";
+    signals.push("voucher_keyword");
+  } else if (containsAny(prompt, ORDER_KEYWORDS)) {
+    likelyResource = "order";
+    signals.push("order_keyword");
   }
 
   // Add general data signals (useful for conflict resolution weighting)
