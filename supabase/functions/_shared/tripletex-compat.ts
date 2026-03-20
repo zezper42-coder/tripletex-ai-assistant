@@ -79,16 +79,30 @@ export async function tryInvoiceCreation(
 ): Promise<{ success: boolean; variant: string; status: number; data: unknown }> {
   const log = logger.child("compat:invoice");
 
-  // Variant 1: PUT /v2/order/{id}/:invoice
-  log.info("Trying variant 1: PUT /v2/order/:invoice", { orderId });
-  const v1 = await client.put(`/v2/order/${orderId}/:invoice`, {
-    invoiceDate,
-    invoiceDueDate: dueDate,
+  // Variant 1: PUT /v2/order/{id}/:invoice with invoiceDate as query param
+  log.info("Trying variant 1: PUT /v2/order/:invoice", { orderId, invoiceDate });
+  const v1 = await client.request("PUT", `/v2/order/${orderId}/:invoice`, {
+    queryParams: {
+      invoiceDate,
+      ...(dueDate ? { invoiceDueDate: dueDate } : {}),
+    },
   });
 
   if (v1.status >= 200 && v1.status < 300) {
     log.info("Variant 1 succeeded", { status: v1.status });
     return { success: true, variant: "PUT /v2/order/{id}/:invoice", status: v1.status, data: v1.data };
+  }
+
+  // Variant 1b: Try with body instead of query params
+  log.warn("Variant 1 failed, trying variant 1b with body", { status: v1.status });
+  const v1b = await client.put(`/v2/order/${orderId}/:invoice`, {
+    invoiceDate,
+    invoiceDueDate: dueDate,
+  });
+
+  if (v1b.status >= 200 && v1b.status < 300) {
+    log.info("Variant 1b succeeded", { status: v1b.status });
+    return { success: true, variant: "PUT /v2/order/{id}/:invoice (body)", status: v1b.status, data: v1b.data };
   }
 
   log.warn("Variant 1 failed, trying variant 2", { status: v1.status });
