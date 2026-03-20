@@ -13,17 +13,17 @@ export async function executeContactCreate(
   const log = logger.child("executor:contact");
   const f = parsed.fields ?? {};
 
-  let firstName = (f.firstName ?? f.fornavn) as string | undefined;
-  let lastName = (f.lastName ?? f.etternavn ?? f.surname) as string | undefined;
-  if (!firstName && !lastName && f.name) {
-    const parts = String(f.name).trim().split(/\s+/);
+  let firstName = (f.firstName ?? f.fornavn ?? f.nombre ?? f.Vorname ?? f.prénom) as string | undefined;
+  let lastName = (f.lastName ?? f.etternavn ?? f.surname ?? f.apellido ?? f.Nachname ?? f.nom) as string | undefined;
+  if (!firstName && !lastName && (f.name ?? f.contactName ?? f.kontaktperson)) {
+    const parts = String(f.name ?? f.contactName ?? f.kontaktperson).trim().split(/\s+/);
     firstName = parts[0];
     lastName = parts.slice(1).join(" ") || parts[0];
   }
 
-  const email = (f.email ?? f.epost) as string | undefined;
-  const phone = (f.phoneNumber ?? f.phone ?? f.telefon) as string | undefined;
-  const customerName = (f.customerName ?? f.customer ?? f.kunde) as string | undefined;
+  const email = (f.email ?? f.epost ?? f.correo ?? f.contactEmail) as string | undefined;
+  const phone = (f.phoneNumber ?? f.phone ?? f.telefon ?? f.contactPhone ?? f.phoneNumberMobile) as string | undefined;
+  const customerName = (f.customerName ?? f.customer ?? f.kunde ?? f.kundenavn ?? f.cliente) as string | undefined;
 
   if (!firstName) {
     return {

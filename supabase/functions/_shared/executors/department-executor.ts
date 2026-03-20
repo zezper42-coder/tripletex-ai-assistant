@@ -53,9 +53,9 @@ export async function executeDepartmentCreate(
     };
   }
 
-  const name = String(fields.name ?? fields.departmentName ?? fields.department_name);
-  const deptNumber = fields.departmentNumber ?? fields.department_number ?? fields.number;
-  const managerId = fields.managerId ?? fields.manager_id ?? fields.departmentManager;
+  const name = String(fields.name ?? fields.departmentName ?? fields.department_name ?? fields.avdelingsnavn ?? fields.nombre ?? fields.Abteilungsname ?? fields.nom);
+  const deptNumber = fields.departmentNumber ?? fields.department_number ?? fields.number ?? fields.avdelingsnummer ?? fields.nummer;
+  const managerId = fields.managerId ?? fields.manager_id ?? fields.departmentManager ?? fields.avdelingsleder;
 
   const steps: ExecutionStep[] = [];
   const stepResults: StepResult[] = [];
