@@ -27,7 +27,7 @@ export class TripletexClient {
       retries?: number;
     }
   ): Promise<{ status: number; data: unknown }> {
-    const retries = options?.retries ?? 2;
+    const retries = options?.retries ?? 0;
     let url = `${this.baseUrl}${endpoint}`;
 
     if (options?.queryParams) {
