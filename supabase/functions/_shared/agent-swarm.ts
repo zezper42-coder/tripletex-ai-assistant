@@ -199,14 +199,14 @@ Generate an execution plan as JSON with this exact structure:
 Return ONLY the JSON object.`;
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
+    const response = await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${openaiKey}`,
+        Authorization: `Bearer ${gatewayKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-5.4",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -216,7 +216,7 @@ Return ONLY the JSON object.`;
     });
 
     if (!response.ok) {
-      logger.error("Swarm GPT-5.4 call failed", { status: response.status });
+      logger.error("Swarm LLM call failed", { status: response.status });
       return null;
     }
 
