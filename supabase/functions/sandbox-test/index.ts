@@ -24,9 +24,12 @@ serve(async (req) => {
     const testType = body.test || "sanity";
 
     if (testType === "sanity") {
-      // Basic GET /v2/employee to verify auth works
+      // Basic GET /v2/customer to verify auth works
       const authHeader = "Basic " + btoa(`0:${sessionToken}`);
-      const url = `${baseUrl}/v2/employee?fields=id,firstName,lastName,email&count=3`;
+      // Strip /v2 suffix if present to avoid double-prefix
+      const cleanBase = baseUrl.replace(/\/v2\/?$/, "");
+      const url = `${cleanBase}/v2/customer?fields=id,name&count=3`;
+      console.log("Sanity check URL:", url);
       const res = await fetch(url, {
         headers: { "Authorization": authHeader, "Accept": "application/json" },
       });
@@ -35,6 +38,7 @@ serve(async (req) => {
         test: "sanity",
         tripletexStatus: res.status,
         baseUrl,
+        actualUrl: url,
         response: JSON.parse(data),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
