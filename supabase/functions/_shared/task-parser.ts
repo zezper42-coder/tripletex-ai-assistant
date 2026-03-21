@@ -103,6 +103,7 @@ CRITICAL RULES:
 1. "fields" MUST contain ALL data values from the task — do not omit anything.
 2. Use the EXACT field names listed above. Do not invent new names.
 3. For multi-entity tasks (e.g. "create project for customer X"), set resourceType to the PRIMARY entity.
+3b. For invoice workflows, ALWAYS use resourceType = "invoice". Never return "order" as the primary resource type.
 4. Extract ALL related entity details into fields (customer info, employee info, etc.).
 5. For suppliers, set resourceType to "supplier".
 6. Numbers should be actual numbers, not strings (prices, amounts, quantities, VAT rates).
@@ -115,11 +116,12 @@ CRITICAL RULES:
 13. For products, "unit" = the unit of measurement mentioned (stk, kg, timer, etc.).
 14. If attachment data is provided below the task, merge ALL extracted data into the fields object.
 15. When both prompt text and attachment data exist, attachment data takes precedence for specific values (amounts, dates, line items).
+16. Attachment blocks are appended in the format [Attachment: filename]. You MUST read and use that content when present.
 
 Example: "Opprett prosjekt Alfa for kunde Firma AS (org.nr 999888777, e-post a@b.no, Storgata 1, 0123 Oslo)" →
 {"language":"nb","normalizedPrompt":"Create project Alfa for customer Firma AS","intent":"create","resourceType":"project","fields":{"name":"Alfa","customerName":"Firma AS","organizationNumber":"999888777","customerEmail":"a@b.no","address":"Storgata 1","postalCode":"0123","city":"Oslo","country":"Norge"},"dependencies":[],"confidence":0.95,"notes":"Customer may need to be created first"}`;
 
-  const openaiKey = Deno.env.get("OPENAI_API_KEY");
+  const openaiKey = apiKey || Deno.env.get("OPENAI_API_KEY");
   if (!openaiKey) throw new Error("OPENAI_API_KEY is not configured");
 
   const response = await fetch(OPENAI_URL, {

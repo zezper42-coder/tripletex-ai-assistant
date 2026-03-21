@@ -44,8 +44,16 @@ export async function processAttachments(
       }
     }
 
-    // For images/PDFs — use LLM vision in future
-    if (att.mimeType === "application/pdf" || att.mimeType.startsWith("image/")) {
+    if (att.mimeType === "application/pdf" && att.base64) {
+      const extractedPdfText = extractPdfText(att.base64);
+      if (extractedPdfText) {
+        content.textContent = extractedPdfText;
+        logger.info(`Extracted PDF text for ${att.filename}`, { length: extractedPdfText.length });
+      }
+    }
+
+    // For images — use OpenAI vision
+    if (att.mimeType.startsWith("image/")) {
       if (att.base64 || att.url) {
         try {
           content.textContent = await extractWithVision(att, apiKey, logger);
@@ -59,6 +67,59 @@ export async function processAttachments(
   }
 
   return results;
+}
+
+function extractPdfText(base64: string): string | undefined {
+  try {
+    const binary = atob(base64.replace(/\s+/g, ""));
+
+    const textChunks = new Set<string>();
+
+    const tjMatches = binary.matchAll(/\(((?:\\.|[^\\()]){3,})\)\s*T[Jj]/g);
+    for (const match of tjMatches) {
+      const cleaned = decodePdfString(match[1]);
+      if (looksLikeUsefulText(cleaned)) {
+        textChunks.add(cleaned);
+      }
+    }
+
+    if (textChunks.size === 0) {
+      const genericMatches = binary.matchAll(/\(((?:\\.|[^\\()]){5,})\)/g);
+      for (const match of genericMatches) {
+        const cleaned = decodePdfString(match[1]);
+        if (looksLikeUsefulText(cleaned)) {
+          textChunks.add(cleaned);
+        }
+        if (textChunks.size >= 40) break;
+      }
+    }
+
+    const joined = Array.from(textChunks)
+      .join("\n")
+      .replace(/\s{2,}/g, " ")
+      .trim();
+
+    return joined.length >= 20 ? joined.slice(0, 4000) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function decodePdfString(value: string): string {
+  return value
+    .replace(/\\n/g, "\n")
+    .replace(/\\r/g, "\r")
+    .replace(/\\t/g, "\t")
+    .replace(/\\\(/g, "(")
+    .replace(/\\\)/g, ")")
+    .replace(/\\\\/g, "\\")
+    .replace(/\0/g, "")
+    .trim();
+}
+
+function looksLikeUsefulText(value: string): boolean {
+  const cleaned = value.replace(/[^\p{L}\p{N}@.,:;\-()/\s]/gu, "").trim();
+  return cleaned.length >= 4 && /[\p{L}\p{N}]/u.test(cleaned);
 }
 
 async function extractWithVision(
