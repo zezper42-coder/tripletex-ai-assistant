@@ -78,9 +78,6 @@ export async function runPipeline(
         try {
           const result = await executor(parsed, client, logger);
           const allSuccess = result.stepResults.every((s) => s.success);
-          const anyWrite = result.stepResults.some(
-            (s) => s.success && s.statusCode >= 200 && s.statusCode < 300 && s.statusCode !== 204
-          );
 
           if (result.verified || allSuccess) {
             logger.info(`Recipe execution succeeded: ${taskType}`, {
@@ -99,13 +96,33 @@ export async function runPipeline(
             };
           }
 
-          // Recipe failed — fall through to agent loop with context
-          logger.warn(`Recipe ${taskType} failed, falling back to agent loop`, {
+          logger.warn(`Recipe ${taskType} failed; returning recipe result without agent fallback`, {
             steps: result.stepResults.length,
             errors: result.stepResults.filter((s) => !s.success).map((s) => s.error),
           });
+          return {
+            status: "failed",
+            language: parsed.language,
+            parsedTask: parsed,
+            executionPlan: result.plan,
+            stepResults: result.stepResults,
+            verificationPassed: false,
+            logs: logger.getEntries(),
+            duration: Date.now() - start,
+          };
         } catch (execErr) {
-          logger.warn(`Recipe executor threw, falling back to agent loop`, { error: String(execErr) });
+          logger.warn(`Recipe executor threw, returning failure without agent fallback`, { error: String(execErr) });
+          return {
+            status: "failed",
+            language: parsed.language,
+            parsedTask: parsed,
+            executionPlan: null,
+            stepResults: [],
+            verificationPassed: false,
+            logs: logger.getEntries(),
+            duration: Date.now() - start,
+            error: String(execErr),
+          };
         }
       }
     }

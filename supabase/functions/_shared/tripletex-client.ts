@@ -1,5 +1,5 @@
 import { Logger } from "./logger.ts";
-import { extractValidationFields, stripFields } from "./field-validation.ts";
+import { stripFields } from "./field-validation.ts";
 
 const PROTECTED_RETRY_FIELDS = new Set([
   "name",
