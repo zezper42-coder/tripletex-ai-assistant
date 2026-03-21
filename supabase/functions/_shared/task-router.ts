@@ -100,13 +100,21 @@ const EXECUTOR_MAP: Record<string, ExecutorFn> = {
 // Normalize camelCase resource types to snake_case for executor lookup
 const RESOURCE_ALIASES: Record<string, string> = {
   travelExpense: "travel_expense",
+  "travel expense": "travel_expense",
+  travel_expense: "travel_expense",
   creditNote: "creditNote",
+  "credit note": "creditNote",
   travelexpense: "travel_expense",
   creditnote: "creditNote",
+  order: "invoice",
 };
 
 export function resolveTaskType(intent: string, resourceType: string): TaskType {
-  const normalizedResource = RESOURCE_ALIASES[resourceType] ?? resourceType;
+  const normalizedInput = String(resourceType ?? "").trim();
+  const normalizedResource =
+    RESOURCE_ALIASES[normalizedInput] ??
+    RESOURCE_ALIASES[normalizedInput.toLowerCase()] ??
+    normalizedInput;
   const key = `${normalizedResource}_${intent}`;
   if (key in EXECUTOR_MAP) return key as TaskType;
   return "unknown";

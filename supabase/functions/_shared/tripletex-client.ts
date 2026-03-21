@@ -1,6 +1,67 @@
 import { Logger } from "./logger.ts";
 import { extractValidationFields, stripFields } from "./field-validation.ts";
 
+const PROTECTED_RETRY_FIELDS = new Set([
+  "name",
+  "firstName",
+  "lastName",
+  "customer",
+  "customerId",
+  "supplier",
+  "supplierId",
+  "employee",
+  "employeeId",
+  "invoiceId",
+  "invoiceDate",
+  "invoiceDueDate",
+  "paymentDate",
+  "amount",
+  "deliveryDate",
+  "orderDate",
+  "orderLines",
+  "lineItems",
+  "postings",
+  "date",
+  "description",
+  "title",
+]);
+
+function getRetriableFields(responseData: unknown): string[] {
+  if (!responseData || typeof responseData !== "object") return [];
+  const data = responseData as Record<string, unknown>;
+  const messages = data.validationMessages as Array<{ field?: string; message?: string }> | undefined;
+  if (!Array.isArray(messages)) return [];
+
+  const removable = new Set<string>();
+
+  for (const message of messages) {
+    const field = String(message.field ?? "").trim();
+    const text = String(message.message ?? "").toLowerCase();
+
+    if (!field || field === "request body") continue;
+    if (
+      text.includes("kan ikke være null") ||
+      text.includes("cannot be null") ||
+      text.includes("must not be null") ||
+      text.includes("required") ||
+      text.includes("må være")
+    ) {
+      continue;
+    }
+
+    const topLevelField = field
+      .replace(/^null\./, "")
+      .replace(/^[^.]+\./, "")
+      .split(".")[0]
+      .replace(/\[\d+\]/g, "");
+
+    if (!topLevelField || PROTECTED_RETRY_FIELDS.has(topLevelField)) continue;
+    removable.add(topLevelField);
+  }
+
+  return Array.from(removable);
+}
+
 export interface TripletexConfig {
   baseUrl: string;
   sessionToken: string;
@@ -119,11 +180,13 @@ export class TripletexClient {
   async postWithRetry(endpoint: string, body: Record<string, unknown>): Promise<{ status: number; data: unknown }> {
     const res = await this.post(endpoint, body);
     if (res.status === 422) {
-      const badFields = extractValidationFields(res.data);
+      const badFields = getRetriableFields(res.data).filter((field) => field in body);
       if (badFields.length > 0) {
         this.logger.warn(`422 retry: stripping fields [${badFields.join(", ")}]`);
         const cleaned = stripFields(body, badFields);
-        return this.post(endpoint, cleaned);
+        if (JSON.stringify(cleaned) !== JSON.stringify(body)) {
+          return this.post(endpoint, cleaned);
+        }
       }
     }
     return res;
@@ -135,11 +198,13 @@ export class TripletexClient {
   async putWithRetry(endpoint: string, body: Record<string, unknown>): Promise<{ status: number; data: unknown }> {
     const res = await this.put(endpoint, body);
     if (res.status === 422) {
-      const badFields = extractValidationFields(res.data);
+      const badFields = getRetriableFields(res.data).filter((field) => field in body);
       if (badFields.length > 0) {
         this.logger.warn(`422 retry (PUT): stripping fields [${badFields.join(", ")}]`);
         const cleaned = stripFields(body, badFields);
-        return this.put(endpoint, cleaned);
+        if (JSON.stringify(cleaned) !== JSON.stringify(body)) {
+          return this.put(endpoint, cleaned);
+        }
       }
     }
     return res;

@@ -11,6 +11,7 @@ import { SolveRequest, PipelineResult, ParsedTask } from "./types.ts";
 import { parseTask } from "./task-parser.ts";
 import { resolveTaskType, getExecutor } from "./task-router.ts";
 import { runAgentLoop } from "./agent-loop.ts";
+import { runHeuristics } from "./heuristics.ts";
 
 export async function runPipeline(
   request: SolveRequest,
@@ -63,7 +64,10 @@ export async function runPipeline(
       return await runAgentFallback(fullPrompt, client, apiKey, logger, start);
     }
 
-    // 4. Try recipe-based execution (deterministic executors)
+    // 4. Apply lightweight routing corrections before recipe lookup
+    parsed = applyRoutingHints(parsed, fullPrompt, logger);
+
+    // 5. Try recipe-based execution (deterministic executors)
     const taskType = resolveTaskType(parsed.intent, parsed.resourceType);
     logger.info("Resolved task type", { taskType, intent: parsed.intent, resourceType: parsed.resourceType });
 
@@ -106,7 +110,7 @@ export async function runPipeline(
       }
     }
 
-    // 5. Fallback: agentic loop for unrecognized or failed recipes
+    // 6. Fallback: agentic loop for unrecognized or failed recipes
     logger.info("Falling back to agentic ReAct loop");
     return await runAgentFallback(fullPrompt, client, apiKey, logger, start);
   } catch (err) {
@@ -123,6 +127,58 @@ export async function runPipeline(
       error: String(err),
     };
   }
+}
+
+function applyRoutingHints(parsed: ParsedTask, prompt: string, logger: Logger): ParsedTask {
+  const heuristics = runHeuristics(prompt, logger.child("heuristics"));
+  const fields = parsed.fields ?? {};
+
+  let nextIntent = parsed.intent;
+  let nextResource = parsed.resourceType;
+
+  const hasInvoiceShape =
+    !!(fields.customerName ?? fields.customer_name ?? fields.customer) &&
+    Array.isArray((fields.lineItems ?? fields.line_items ?? fields.lines) as unknown);
+
+  const hasPaymentShape =
+    !!(fields.invoiceId ?? fields.invoice_id ?? fields.invoiceNumber ?? fields.invoice_number) &&
+    !!(fields.amount ?? fields.paymentAmount ?? fields.paymentDate ?? fields.payment_date);
+
+  if (nextIntent === "unknown" && heuristics.likelyAction) {
+    nextIntent = heuristics.likelyAction as ParsedTask["intent"];
+  }
+
+  if ((nextResource === "unknown" || resolveTaskType(nextIntent, nextResource) === "unknown") && heuristics.likelyResource) {
+    nextResource = heuristics.likelyResource as ParsedTask["resourceType"];
+  }
+
+  if (nextResource === "order" && nextIntent === "create") {
+    nextResource = "invoice";
+  }
+
+  if ((nextResource === "unknown" || nextResource === "order") && nextIntent === "create" && hasInvoiceShape) {
+    nextResource = "invoice";
+  }
+
+  if (nextResource === "unknown" && hasPaymentShape) {
+    nextResource = "payment";
+    nextIntent = "create";
+  }
+
+  if (nextIntent !== parsed.intent || nextResource !== parsed.resourceType) {
+    logger.info("Applied routing hints", {
+      from: { intent: parsed.intent, resourceType: parsed.resourceType },
+      to: { intent: nextIntent, resourceType: nextResource },
+      heuristicResource: heuristics.likelyResource,
+      heuristicAction: heuristics.likelyAction,
+    });
+  }
+
+  return {
+    ...parsed,
+    intent: nextIntent,
+    resourceType: nextResource,
+  };
 }
 
 async function runAgentFallback(
