@@ -1,5 +1,5 @@
 /**
- * Recipe-first pipeline: parse task with LLM → route to deterministic executor → fallback to agent loop.
+ * Recipe-first pipeline: filter noise → parse task with LLM → route to deterministic executor → fallback to agent loop.
  * Attachment data is merged into parsed fields before execution.
  */
 
@@ -12,6 +12,7 @@ import { parseTask } from "./task-parser.ts";
 import { resolveTaskType, getExecutor } from "./task-router.ts";
 import { runAgentLoop } from "./agent-loop.ts";
 import { runHeuristics } from "./heuristics.ts";
+import { extractActionablePrompt } from "./prompt-filter.ts";
 
 export async function runPipeline(
   request: SolveRequest,
