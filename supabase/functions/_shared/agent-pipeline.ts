@@ -40,9 +40,18 @@ export async function runPipeline(
         .join("\n");
     }
 
+    // 1b. Filter noise from prompt
+    const cleanedTask = extractActionablePrompt(request.task);
+    if (cleanedTask !== request.task) {
+      logger.info("Prompt noise filtered", {
+        originalLength: request.task.length,
+        cleanedLength: cleanedTask.length,
+      });
+    }
+
     const fullPrompt = attachmentContext
-      ? `${request.task}\n\nAttachment contents:${attachmentContext}`
-      : request.task;
+      ? `${cleanedTask}\n\nAttachment contents:${attachmentContext}`
+      : cleanedTask;
 
     // 2. Create Tripletex client
     const client = new TripletexClient(
