@@ -7,21 +7,122 @@ import { validateEmployeeFields, ValidationError } from "../field-validation.ts"
 import { ExecutorResult } from "../task-router.ts";
 import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
-const ADMIN_KEYWORDS = [
-  "administrator", "kontoadministrator", "account administrator",
-  "admin", "brukeradministrator", "user admin", "administrador",
-  "Kontoadministrator", "Administrator",
+// ── Role-to-entitlement mapping (ported from Python ROLE_RULES) ──
+interface RoleRule {
+  roleName: string;
+  userType: "STANDARD" | "EXTENDED" | "NO_ACCESS";
+  entitlementTemplate: string | null;
+  keywords: string[];
+}
+
+const ROLE_RULES: RoleRule[] = [
+  {
+    roleName: "NO_SYSTEM_ACCESS",
+    userType: "NO_ACCESS",
+    entitlementTemplate: null,
+    keywords: ["vanlig ansatt uten behov for tilgang til tripletex", "uten systemtilgang", "without system access", "no access", "sin acceso al sistema", "sem acesso ao sistema", "sans accès au système", "ohne systemzugang"],
+  },
+  {
+    roleName: "NO_PRIVILEGES",
+    userType: "EXTENDED",
+    entitlementTemplate: "NONE_PRIVILEGES",
+    keywords: ["ingen tilganger", "no privileges", "sin privilegios", "sem privilégios"],
+  },
+  {
+    roleName: "USER_ADMINISTRATOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: ["brukeradministrator", "user administrator"],
+  },
+  {
+    roleName: "FULL_PRIVILEGES",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: ["alle rettigheter", "all privileges", "full access", "todos los privilegios", "acesso total"],
+  },
+  {
+    roleName: "STANDARD_EMPLOYEE",
+    userType: "STANDARD",
+    entitlementTemplate: null,
+    keywords: ["vanlig ansatt med behov for å føre timer og utlegg", "vanlig ansatt med behov for a fore timer og utlegg", "vanlig ansatt", "standard employee", "empleado estándar", "funcionário padrão"],
+  },
+  {
+    roleName: "ACCOUNT_ADMINISTRATOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: [
+      "kontoadministrator", "account administrator", "system administrator",
+      "systemadministrator", "administrador de cuenta", "administrador da conta",
+      "administrateur de compte", "administrator", "admin", "kontoadmin",
+      "Kontoadministrator", "Administrator",
+    ],
+  },
+  {
+    roleName: "PERSONELL_MANAGER",
+    userType: "EXTENDED",
+    entitlementTemplate: "PERSONELL_MANAGER",
+    keywords: [
+      "personellansvarlig", "lønnsansvarlig", "lonnsansvarlig",
+      "personalansvarlig/lønnsansvarlig", "personalansvarlig/lonnsansvarlig",
+      "personnel manager", "hr manager",
+    ],
+  },
+  {
+    roleName: "INVOICING_MANAGER",
+    userType: "EXTENDED",
+    entitlementTemplate: "INVOICING_MANAGER",
+    keywords: ["fakturaansvarlig", "invoice manager", "responsable de facturación"],
+  },
+  {
+    roleName: "DEPARTMENT_LEADER",
+    userType: "EXTENDED",
+    entitlementTemplate: "DEPARTMENT_LEADER",
+    keywords: ["avdelingsleder", "department leader", "líder de departamento"],
+  },
+  {
+    roleName: "PROJECT_LEADER",
+    userType: "EXTENDED",
+    entitlementTemplate: null,
+    keywords: ["prosjektleder", "project leader", "project manager", "líder de proyecto"],
+  },
+  {
+    roleName: "ACCOUNTANT",
+    userType: "EXTENDED",
+    entitlementTemplate: "ACCOUNTANT",
+    keywords: ["regnskapsfører", "regnskapsforer", "accountant", "contador", "comptable"],
+  },
+  {
+    roleName: "AUDITOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "AUDITOR",
+    keywords: ["revisor", "auditor", "auditeur"],
+  },
 ];
 
-function isAdminRole(fields: Record<string, unknown>): boolean {
-  const role = String(fields.role ?? fields.stilling ?? fields.jobTitle ?? fields.stillingstittel ?? "").toLowerCase();
+function detectRole(fields: Record<string, unknown>, promptText: string): RoleRule | null {
+  const searchText = [
+    String(fields.role ?? ""),
+    String(fields.stilling ?? ""),
+    String(fields.jobTitle ?? ""),
+    String(fields.stillingstittel ?? ""),
+    String(fields._notes ?? ""),
+    promptText,
+  ].join(" ").toLowerCase();
+
+  // Check explicit boolean flags first
   const isAdmin = fields.isAccountAdministrator ?? fields.isAdmin ?? fields.administrator;
-  if (isAdmin === true) return true;
+  if (isAdmin === true) {
+    return ROLE_RULES.find(r => r.roleName === "ACCOUNT_ADMINISTRATOR") ?? null;
+  }
 
-  // Also check the raw prompt notes for admin keywords
-  const notes = String(fields._notes ?? "").toLowerCase();
+  // Check keywords in order (most specific first)
+  for (const rule of ROLE_RULES) {
+    if (rule.keywords.some(kw => searchText.includes(kw.toLowerCase()))) {
+      return rule;
+    }
+  }
 
-  return ADMIN_KEYWORDS.some((kw) => role.includes(kw.toLowerCase()) || notes.includes(kw.toLowerCase()));
+  return null;
 }
 
 export async function executeEmployeeCreate(
