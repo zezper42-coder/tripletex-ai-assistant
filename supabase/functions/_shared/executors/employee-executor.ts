@@ -263,14 +263,14 @@ export async function executeEmployeeCreate(
     });
   }
 
-  // Step 3: Assign admin role if detected
-  const shouldAssignAdmin = isAdminRole(fields) || adminInPrompt;
+  // Step 3: Assign entitlements based on detected role
+  const shouldAssignEntitlements = detectedRole?.entitlementTemplate != null;
 
-  if (shouldAssignAdmin && employeeId) {
+  if (shouldAssignEntitlements && employeeId && detectedRole) {
     stepNum++;
     steps.push({
       stepNumber: stepNum,
-      description: "Grant admin entitlements (userType EXTENDED + template)",
+      description: `Grant entitlements: ${detectedRole.roleName} (template: ${detectedRole.entitlementTemplate})`,
       method: "PUT",
       endpoint: "/v2/employee/entitlement/:grantEntitlementsByTemplate",
       body: {},
@@ -285,18 +285,18 @@ export async function executeEmployeeCreate(
       statusCode: grantResult.status,
       data: grantResult.data,
       duration: Date.now() - grantStart,
-      ...(!grantResult.success && { error: "All entitlement templates failed" }),
+      ...(!grantResult.success && { error: `Entitlement template ${detectedRole.entitlementTemplate} failed` }),
     });
 
     if (grantResult.success) {
-      log.info(`Admin role assigned via template: ${grantResult.template}`);
+      log.info(`Role ${detectedRole.roleName} assigned via template: ${grantResult.template}`);
     }
   }
 
   const verified = success;
 
   const plan: ExecutionPlan = {
-    summary: `Create employee: ${firstName} ${lastName}${shouldAssignAdmin ? " (administrator)" : ""}`,
+    summary: `Create employee: ${firstName} ${lastName}${detectedRole ? ` (${detectedRole.roleName})` : ""}`,
     steps,
   };
 
