@@ -133,9 +133,9 @@ export async function executeEmployeeCreate(
   const log = logger.child("executor:employee");
   const fields = parsed.fields ?? {};
 
-  // Also check the original prompt for admin keywords
-  const promptLower = (parsed.normalizedPrompt ?? "").toLowerCase() + " " + (parsed.notes ?? "").toLowerCase();
-  const adminInPrompt = ADMIN_KEYWORDS.some((kw) => promptLower.includes(kw.toLowerCase()));
+  // Detect role using the comprehensive role rules
+  const promptText = (parsed.normalizedPrompt ?? "") + " " + (parsed.notes ?? "");
+  const detectedRole = detectRole(fields, promptText);
 
   // Normalize field names — handle split or combined name formats
   let firstName = (fields.firstName ?? fields.fornavn) as string | undefined;
