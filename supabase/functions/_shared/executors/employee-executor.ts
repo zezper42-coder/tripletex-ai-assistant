@@ -183,10 +183,13 @@ export async function executeEmployeeCreate(
     }
   }
 
+  // Set userType based on detected role
+  const userType = detectedRole?.userType ?? "STANDARD";
+
   const body: Record<string, unknown> = {
     firstName: normalizedFields.firstName,
     lastName: normalizedFields.lastName,
-    userType: "STANDARD",
+    userType,
     ...(departmentId && { department: { id: departmentId } }),
   };
   if (normalizedFields.email) body.email = normalizedFields.email;
