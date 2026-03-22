@@ -209,7 +209,7 @@ export async function executeEmployeeCreate(
     resultKey: "employeeId",
   });
 
-  log.info("Executing employee creation", { body, adminDetected: isAdminRole(fields) || adminInPrompt });
+  log.info("Executing employee creation", { body, role: detectedRole?.roleName ?? "none", userType });
   const start = Date.now();
   const response = await client.postWithRetry("/v2/employee", body);
   const duration = Date.now() - start;
