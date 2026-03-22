@@ -7,21 +7,122 @@ import { validateEmployeeFields, ValidationError } from "../field-validation.ts"
 import { ExecutorResult } from "../task-router.ts";
 import { grantAdminEntitlements } from "../tripletex-compat.ts";
 
-const ADMIN_KEYWORDS = [
-  "administrator", "kontoadministrator", "account administrator",
-  "admin", "brukeradministrator", "user admin", "administrador",
-  "Kontoadministrator", "Administrator",
+// ── Role-to-entitlement mapping (ported from Python ROLE_RULES) ──
+interface RoleRule {
+  roleName: string;
+  userType: "STANDARD" | "EXTENDED" | "NO_ACCESS";
+  entitlementTemplate: string | null;
+  keywords: string[];
+}
+
+const ROLE_RULES: RoleRule[] = [
+  {
+    roleName: "NO_SYSTEM_ACCESS",
+    userType: "NO_ACCESS",
+    entitlementTemplate: null,
+    keywords: ["vanlig ansatt uten behov for tilgang til tripletex", "uten systemtilgang", "without system access", "no access", "sin acceso al sistema", "sem acesso ao sistema", "sans accès au système", "ohne systemzugang"],
+  },
+  {
+    roleName: "NO_PRIVILEGES",
+    userType: "EXTENDED",
+    entitlementTemplate: "NONE_PRIVILEGES",
+    keywords: ["ingen tilganger", "no privileges", "sin privilegios", "sem privilégios"],
+  },
+  {
+    roleName: "USER_ADMINISTRATOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: ["brukeradministrator", "user administrator"],
+  },
+  {
+    roleName: "FULL_PRIVILEGES",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: ["alle rettigheter", "all privileges", "full access", "todos los privilegios", "acesso total"],
+  },
+  {
+    roleName: "STANDARD_EMPLOYEE",
+    userType: "STANDARD",
+    entitlementTemplate: null,
+    keywords: ["vanlig ansatt med behov for å føre timer og utlegg", "vanlig ansatt med behov for a fore timer og utlegg", "vanlig ansatt", "standard employee", "empleado estándar", "funcionário padrão"],
+  },
+  {
+    roleName: "ACCOUNT_ADMINISTRATOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "ALL_PRIVILEGES",
+    keywords: [
+      "kontoadministrator", "account administrator", "system administrator",
+      "systemadministrator", "administrador de cuenta", "administrador da conta",
+      "administrateur de compte", "administrator", "admin", "kontoadmin",
+      "Kontoadministrator", "Administrator",
+    ],
+  },
+  {
+    roleName: "PERSONELL_MANAGER",
+    userType: "EXTENDED",
+    entitlementTemplate: "PERSONELL_MANAGER",
+    keywords: [
+      "personellansvarlig", "lønnsansvarlig", "lonnsansvarlig",
+      "personalansvarlig/lønnsansvarlig", "personalansvarlig/lonnsansvarlig",
+      "personnel manager", "hr manager",
+    ],
+  },
+  {
+    roleName: "INVOICING_MANAGER",
+    userType: "EXTENDED",
+    entitlementTemplate: "INVOICING_MANAGER",
+    keywords: ["fakturaansvarlig", "invoice manager", "responsable de facturación"],
+  },
+  {
+    roleName: "DEPARTMENT_LEADER",
+    userType: "EXTENDED",
+    entitlementTemplate: "DEPARTMENT_LEADER",
+    keywords: ["avdelingsleder", "department leader", "líder de departamento"],
+  },
+  {
+    roleName: "PROJECT_LEADER",
+    userType: "EXTENDED",
+    entitlementTemplate: null,
+    keywords: ["prosjektleder", "project leader", "project manager", "líder de proyecto"],
+  },
+  {
+    roleName: "ACCOUNTANT",
+    userType: "EXTENDED",
+    entitlementTemplate: "ACCOUNTANT",
+    keywords: ["regnskapsfører", "regnskapsforer", "accountant", "contador", "comptable"],
+  },
+  {
+    roleName: "AUDITOR",
+    userType: "EXTENDED",
+    entitlementTemplate: "AUDITOR",
+    keywords: ["revisor", "auditor", "auditeur"],
+  },
 ];
 
-function isAdminRole(fields: Record<string, unknown>): boolean {
-  const role = String(fields.role ?? fields.stilling ?? fields.jobTitle ?? fields.stillingstittel ?? "").toLowerCase();
+function detectRole(fields: Record<string, unknown>, promptText: string): RoleRule | null {
+  const searchText = [
+    String(fields.role ?? ""),
+    String(fields.stilling ?? ""),
+    String(fields.jobTitle ?? ""),
+    String(fields.stillingstittel ?? ""),
+    String(fields._notes ?? ""),
+    promptText,
+  ].join(" ").toLowerCase();
+
+  // Check explicit boolean flags first
   const isAdmin = fields.isAccountAdministrator ?? fields.isAdmin ?? fields.administrator;
-  if (isAdmin === true) return true;
+  if (isAdmin === true) {
+    return ROLE_RULES.find(r => r.roleName === "ACCOUNT_ADMINISTRATOR") ?? null;
+  }
 
-  // Also check the raw prompt notes for admin keywords
-  const notes = String(fields._notes ?? "").toLowerCase();
+  // Check keywords in order (most specific first)
+  for (const rule of ROLE_RULES) {
+    if (rule.keywords.some(kw => searchText.includes(kw.toLowerCase()))) {
+      return rule;
+    }
+  }
 
-  return ADMIN_KEYWORDS.some((kw) => role.includes(kw.toLowerCase()) || notes.includes(kw.toLowerCase()));
+  return null;
 }
 
 export async function executeEmployeeCreate(
@@ -32,9 +133,9 @@ export async function executeEmployeeCreate(
   const log = logger.child("executor:employee");
   const fields = parsed.fields ?? {};
 
-  // Also check the original prompt for admin keywords
-  const promptLower = (parsed.normalizedPrompt ?? "").toLowerCase() + " " + (parsed.notes ?? "").toLowerCase();
-  const adminInPrompt = ADMIN_KEYWORDS.some((kw) => promptLower.includes(kw.toLowerCase()));
+  // Detect role using the comprehensive role rules
+  const promptText = (parsed.normalizedPrompt ?? "") + " " + (parsed.notes ?? "");
+  const detectedRole = detectRole(fields, promptText);
 
   // Normalize field names — handle split or combined name formats
   let firstName = (fields.firstName ?? fields.fornavn) as string | undefined;
@@ -82,10 +183,13 @@ export async function executeEmployeeCreate(
     }
   }
 
+  // Set userType based on detected role
+  const userType = detectedRole?.userType ?? "STANDARD";
+
   const body: Record<string, unknown> = {
     firstName: normalizedFields.firstName,
     lastName: normalizedFields.lastName,
-    userType: "STANDARD",
+    userType,
     ...(departmentId && { department: { id: departmentId } }),
   };
   if (normalizedFields.email) body.email = normalizedFields.email;
@@ -105,7 +209,7 @@ export async function executeEmployeeCreate(
     resultKey: "employeeId",
   });
 
-  log.info("Executing employee creation", { body, adminDetected: isAdminRole(fields) || adminInPrompt });
+  log.info("Executing employee creation", { body, role: detectedRole?.roleName ?? "none", userType });
   const start = Date.now();
   const response = await client.postWithRetry("/v2/employee", body);
   const duration = Date.now() - start;
@@ -159,14 +263,14 @@ export async function executeEmployeeCreate(
     });
   }
 
-  // Step 3: Assign admin role if detected
-  const shouldAssignAdmin = isAdminRole(fields) || adminInPrompt;
+  // Step 3: Assign entitlements based on detected role
+  const shouldAssignEntitlements = detectedRole?.entitlementTemplate != null;
 
-  if (shouldAssignAdmin && employeeId) {
+  if (shouldAssignEntitlements && employeeId && detectedRole) {
     stepNum++;
     steps.push({
       stepNumber: stepNum,
-      description: "Grant admin entitlements (userType EXTENDED + template)",
+      description: `Grant entitlements: ${detectedRole.roleName} (template: ${detectedRole.entitlementTemplate})`,
       method: "PUT",
       endpoint: "/v2/employee/entitlement/:grantEntitlementsByTemplate",
       body: {},
@@ -181,18 +285,18 @@ export async function executeEmployeeCreate(
       statusCode: grantResult.status,
       data: grantResult.data,
       duration: Date.now() - grantStart,
-      ...(!grantResult.success && { error: "All entitlement templates failed" }),
+      ...(!grantResult.success && { error: `Entitlement template ${detectedRole.entitlementTemplate} failed` }),
     });
 
     if (grantResult.success) {
-      log.info(`Admin role assigned via template: ${grantResult.template}`);
+      log.info(`Role ${detectedRole.roleName} assigned via template: ${grantResult.template}`);
     }
   }
 
   const verified = success;
 
   const plan: ExecutionPlan = {
-    summary: `Create employee: ${firstName} ${lastName}${shouldAssignAdmin ? " (administrator)" : ""}`,
+    summary: `Create employee: ${firstName} ${lastName}${detectedRole ? ` (${detectedRole.roleName})` : ""}`,
     steps,
   };
 
